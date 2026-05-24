@@ -9,8 +9,6 @@ services:
       DB_NAME: ${DB_NAME:-mydb}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_ENV: ${LOG_ENV:-development}
-    ports:
-      - "8000:8000"
     depends_on:
       - db
 
@@ -20,5 +18,3 @@ services:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       POSTGRES_DB: ${DB_NAME:-mydb}
-    ports:
-      - "5432:5432"

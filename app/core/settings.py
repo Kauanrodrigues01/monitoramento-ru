@@ -20,5 +20,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     LOG_ENV: str = "development"  # development | production
 
+    ADMIN_API_KEY: str
+
 
 settings = Settings()

@@ -2,8 +2,9 @@ from datetime import datetime
 from decimal import ROUND_DOWN, Decimal
 from uuid import UUID, uuid4
 
-from models.restaurant import CampusEnum
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from app.models.restaurant import CampusEnum
 
 
 def _truncate_coordinates(value: Decimal) -> Decimal:

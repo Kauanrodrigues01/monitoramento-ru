@@ -1,10 +1,11 @@
 from contextlib import asynccontextmanager
 
-from api.v1.router import api_router
-from core.exception_handlers import app_exception_handler
-from core.logging import get_logger, setup_logging
-from exceptions.base import AppException
 from fastapi import FastAPI
+
+from app.api.v1.router import api_router
+from app.core.exception_handlers import app_exception_handler
+from app.core.logging import get_logger, setup_logging
+from app.exceptions.base import AppException
 
 setup_logging()
 logger = get_logger(__name__)

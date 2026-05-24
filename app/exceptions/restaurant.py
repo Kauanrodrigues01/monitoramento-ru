@@ -1,4 +1,4 @@
-from exceptions.base import AppException
+from app.exceptions.base import AppException
 
 
 class RestaurantAlreadyExistsError(AppException):

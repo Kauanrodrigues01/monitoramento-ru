@@ -1,16 +1,20 @@
 from uuid import UUID
 
-from core.openapi_responses import error_response
-from dependencies.restaurant import RestaurantServiceDep
-from exceptions.restaurant import (
+from fastapi import APIRouter, Depends
+
+from app.core.openapi_responses import error_response
+from app.dependencies.auth import require_admin_api_key
+from app.dependencies.restaurant import RestaurantServiceDep
+from app.exceptions.auth import InvalidAdminApiKeyError
+from app.exceptions.restaurant import (
     RestaurantAlreadyExistsError,
     RestaurantNotFoundError,
 )
-from fastapi import APIRouter, Depends
-from schemas.restaurants import RestaurantCreate, RestaurantResponse, RestaurantUpdate
-
-from dependencies.auth import require_admin_api_key
-from exceptions.auth import InvalidAdminApiKeyError
+from app.schemas.restaurants import (
+    RestaurantCreate,
+    RestaurantResponse,
+    RestaurantUpdate,
+)
 
 router = APIRouter(prefix="/restaurants", tags=["Restaurants"])
 

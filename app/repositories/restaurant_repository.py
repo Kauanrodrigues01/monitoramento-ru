@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.restaurant import Restaurant
+from app.models.restaurant import Restaurant
 
 
 class RestaurantRepository:

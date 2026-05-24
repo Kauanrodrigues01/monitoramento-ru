@@ -1,11 +1,15 @@
 from uuid import UUID
 
-from core.logging import get_logger
-from exceptions.restaurant import RestaurantAlreadyExistsError, RestaurantNotFoundError
-from models.restaurant import Restaurant
-from repositories.restaurant_repository import RestaurantRepository
-from schemas.restaurants import RestaurantCreate, RestaurantUpdate
 from sqlalchemy.exc import IntegrityError
+
+from app.core.logging import get_logger
+from app.exceptions.restaurant import (
+    RestaurantAlreadyExistsError,
+    RestaurantNotFoundError,
+)
+from app.models.restaurant import Restaurant
+from app.repositories.restaurant_repository import RestaurantRepository
+from app.schemas.restaurants import RestaurantCreate, RestaurantUpdate
 
 logger = get_logger(__name__)
 

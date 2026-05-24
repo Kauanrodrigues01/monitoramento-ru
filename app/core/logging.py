@@ -2,7 +2,7 @@ import logging
 import logging.config
 import sys
 
-from core.settings import settings
+from app.core.settings import settings
 
 _ANSI_RESET = "\033[0m"
 _LEVEL_COLORS = {
@@ -28,7 +28,7 @@ def setup_logging() -> None:
     log_level = settings.LOG_LEVEL.upper()
 
     formatter_class = (
-        "core.logging._ColorFormatter"
+        "app.core.logging._ColorFormatter"
         if settings.LOG_ENV == "development"
         else "logging.Formatter"
     )

@@ -1,4 +1,5 @@
-from exceptions.base import AppException
+from app.exceptions.base import AppException
+
 
 class InvalidAdminApiKeyError(AppException):
     status_code = 401

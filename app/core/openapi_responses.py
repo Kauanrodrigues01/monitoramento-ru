@@ -1,4 +1,4 @@
-from schemas.errors import ErrorResponse
+from app.schemas.errors import ErrorResponse
 
 
 def error_response(exc: type) -> dict:

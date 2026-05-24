@@ -1,9 +1,8 @@
 from fastapi import Depends
 from fastapi.security import APIKeyHeader
 
-from core.settings import settings
-from exceptions.auth import InvalidAdminApiKeyError
-
+from app.core.settings import settings
+from app.exceptions.auth import InvalidAdminApiKeyError
 
 api_key_scheme = APIKeyHeader(
     name="X-Admin-Key",

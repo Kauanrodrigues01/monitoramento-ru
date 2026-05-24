@@ -2,9 +2,9 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from dependencies.database import DBSessionDep
-from repositories.restaurant_repository import RestaurantRepository
-from services.restaurant_service import RestaurantService
+from app.dependencies.database import DBSessionDep
+from app.repositories.restaurant_repository import RestaurantRepository
+from app.services.restaurant_service import RestaurantService
 
 
 def get_restaurant_service(db_session: DBSessionDep) -> RestaurantService:

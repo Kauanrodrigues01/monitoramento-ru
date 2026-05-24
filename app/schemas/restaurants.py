@@ -52,7 +52,7 @@ class RestaurantUpdate(BaseModel):
 
     @field_validator("lat", "lng")
     @classmethod
-    def truncate_coordinates(cls, value: Decimal | None) -> Decimal:
+    def truncate_coordinates(cls, value: Decimal | None) -> Decimal | None:
         if value is None:
             return value
         return _truncate_coordinates(value)

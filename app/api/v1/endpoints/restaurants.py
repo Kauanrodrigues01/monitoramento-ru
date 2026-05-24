@@ -10,7 +10,7 @@ from app.exceptions.restaurant import (
     RestaurantAlreadyExistsError,
     RestaurantNotFoundError,
 )
-from app.schemas.restaurants import (
+from app.schemas.restaurant_schemas import (
     RestaurantCreate,
     RestaurantResponse,
     RestaurantUpdate,

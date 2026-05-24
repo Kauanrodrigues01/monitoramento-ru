@@ -1,0 +1,18 @@
+[run]
+source = app
+omit =
+    */tests/*
+    */migrations/*
+    */alembic/*
+    */__init__.py
+    */main.py
+    */core/config.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
+    raise NotImplementedError
+
+skip_empty = True
+show_missing = True

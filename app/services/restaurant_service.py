@@ -9,7 +9,7 @@ from app.exceptions.restaurant import (
 )
 from app.models.restaurant import Restaurant
 from app.repositories.restaurant_repository import RestaurantRepository
-from app.schemas.restaurants import RestaurantCreate, RestaurantUpdate
+from app.schemas.restaurant_schemas import RestaurantCreate, RestaurantUpdate
 
 logger = get_logger(__name__)
 

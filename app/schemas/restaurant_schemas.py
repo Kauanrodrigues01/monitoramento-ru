@@ -15,13 +15,13 @@ class RestaurantCreate(BaseModel):
     name: str | None = Field(
         default=None,
         min_length=3,
-        max_length=255,
+        max_length=120,
         examples=[f"RU {CampusEnum.PALMARES.value}"],
     )
     campus: CampusEnum = Field(examples=[CampusEnum.PALMARES.value])
     lat: Decimal = Field(ge=-90, le=90, examples=[-23.55052])
     lng: Decimal = Field(ge=-180, le=180, examples=[-46.63330])
-    geofence_radius_m: int = Field(ge=0, le=200, default=80)
+    geofence_radius_m: int = Field(ge=0, le=120, default=80)
     is_active: bool = True
 
     @field_validator("lat", "lng")
@@ -40,7 +40,7 @@ class RestaurantUpdate(BaseModel):
     name: str | None = Field(
         default=None,
         min_length=3,
-        max_length=255,
+        max_length=120,
         examples=[f"RU {CampusEnum.PALMARES.value}"],
     )
     campus: CampusEnum | None = Field(
@@ -48,7 +48,7 @@ class RestaurantUpdate(BaseModel):
     )
     lat: Decimal | None = Field(ge=-90, le=90, default=None, examples=[-23.55052])
     lng: Decimal | None = Field(ge=-180, le=180, default=None, examples=[-46.63330])
-    geofence_radius_m: int | None = Field(ge=0, le=200, default=None)
+    geofence_radius_m: int | None = Field(ge=0, le=120, default=None)
     is_active: bool | None = None
 
     @field_validator("lat", "lng")

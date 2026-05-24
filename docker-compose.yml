@@ -9,6 +9,7 @@ services:
       DB_NAME: ${DB_NAME:-mydb}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_ENV: ${LOG_ENV:-development}
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-change-me}
     depends_on:
       - db
 

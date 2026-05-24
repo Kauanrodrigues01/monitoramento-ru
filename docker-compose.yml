@@ -1,4 +1,19 @@
 services:
+  api:
+    build: .
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-mydb}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_ENV: ${LOG_ENV:-development}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
   db:
     image: postgres:17.2-alpine
     environment:

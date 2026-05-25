@@ -1,10 +1,10 @@
-from datetime import datetime
+from datetime import datetime, time
 from decimal import Decimal
 from uuid import uuid4
 
 import factory
 
-from app.models.restaurant import CampusEnum, Restaurant
+from app.models.restaurant import CampusEnum, MealPeriodEnum, Restaurant, RestaurantSchedule
 
 
 class RestaurantFactory(factory.Factory):
@@ -44,3 +44,21 @@ class RestaurantLiberdadeFactory(RestaurantFactory):
 
     name = "RU Liberdade"
     campus = CampusEnum.LIBERDADE
+
+
+class RestaurantScheduleFactory(factory.Factory):
+    """Factory para criar instâncias de RestaurantSchedule para testes"""
+
+    class Meta:
+        model = RestaurantSchedule
+
+    id = factory.Sequence(lambda n: n + 1)
+    public_id = factory.LazyFunction(uuid4)
+    ru_id = factory.Sequence(lambda n: n + 1)
+    weekday = 0
+    meal_period = MealPeriodEnum.LUNCH
+    opens_at = time(11, 0)
+    closes_at = time(14, 0)
+    is_active = True
+    created_at = factory.LazyFunction(datetime.now)
+    updated_at = factory.LazyFunction(datetime.now)

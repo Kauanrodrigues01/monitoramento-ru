@@ -1,10 +1,17 @@
-from datetime import datetime, time
+from datetime import date, datetime, time
 from decimal import Decimal
 from uuid import uuid4
 
 import factory
 
-from app.models.restaurant import CampusEnum, MealPeriodEnum, Restaurant, RestaurantSchedule
+from app.models.restaurant import (
+    CampusEnum,
+    ExceptionTypeEnum,
+    MealPeriodEnum,
+    Restaurant,
+    RestaurantSchedule,
+    RestaurantScheduleException,
+)
 
 
 class RestaurantFactory(factory.Factory):
@@ -60,5 +67,24 @@ class RestaurantScheduleFactory(factory.Factory):
     opens_at = time(11, 0)
     closes_at = time(14, 0)
     is_active = True
+    created_at = factory.LazyFunction(datetime.now)
+    updated_at = factory.LazyFunction(datetime.now)
+
+
+class RestaurantScheduleExceptionFactory(factory.Factory):
+    """Factory para criar instâncias de RestaurantScheduleException para testes"""
+
+    class Meta:
+        model = RestaurantScheduleException
+
+    id = factory.Sequence(lambda n: n + 1)
+    public_id = factory.LazyFunction(uuid4)
+    ru_id = factory.Sequence(lambda n: n + 1)
+    exception_date = date(2025, 12, 25)
+    exception_type = ExceptionTypeEnum.CLOSED
+    meal_period = None
+    opens_at = None
+    closes_at = None
+    reason = None
     created_at = factory.LazyFunction(datetime.now)
     updated_at = factory.LazyFunction(datetime.now)

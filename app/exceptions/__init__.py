@@ -1,5 +1,5 @@
 from app.exceptions.base import AppException
-from app.exceptions.restaurant import (
+from app.exceptions.restaurant_exceptions import (
     RestaurantAlreadyExistsError,
     RestaurantNotFoundError,
 )

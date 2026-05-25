@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy.exc import IntegrityError
 
 from app.core.logging import get_logger
-from app.exceptions.restaurant import (
+from app.exceptions.restaurant_exceptions import (
     RestaurantAlreadyExistsError,
     RestaurantNotFoundError,
     RestaurantScheduleAlreadyExistsError,

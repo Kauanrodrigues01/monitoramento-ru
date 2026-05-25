@@ -4,12 +4,12 @@ from fastapi import APIRouter, Depends
 
 from app.core.openapi_responses import error_response
 from app.dependencies.auth import require_admin_api_key
-from app.dependencies.restaurant import (
+from app.dependencies.restaurant_dependencies import (
     RestaurantScheduleServiceDep,
     RestaurantServiceDep,
 )
 from app.exceptions.auth import InvalidAdminApiKeyError
-from app.exceptions.restaurant import (
+from app.exceptions.restaurant_exceptions import (
     RestaurantAlreadyExistsError,
     RestaurantNotFoundError,
     RestaurantScheduleAlreadyExistsError,

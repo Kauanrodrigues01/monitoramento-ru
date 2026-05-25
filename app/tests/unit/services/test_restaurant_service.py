@@ -4,7 +4,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from app.exceptions.restaurant import (
+from app.exceptions.restaurant_exceptions import (
     RestaurantAlreadyExistsError,
     RestaurantNotFoundError,
 )

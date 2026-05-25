@@ -12,7 +12,10 @@ from app.exceptions.restaurant_exceptions import (
 from app.models.restaurant import MealPeriodEnum, Restaurant, RestaurantSchedule
 from app.repositories.restaurant_repository import RestaurantRepository
 from app.repositories.restaurant_schedule_repository import RestaurantScheduleRepository
-from app.schemas.restaurant_schemas import RestaurantScheduleCreate, RestaurantScheduleUpdate
+from app.schemas.restaurant_schedule_schemas import (
+    RestaurantScheduleCreate,
+    RestaurantScheduleUpdate,
+)
 
 logger = get_logger(__name__)
 
@@ -84,16 +87,14 @@ class RestaurantScheduleService:
     async def update_restaurant_schedule(
         self,
         restaurant_public_id: UUID,
-        restaurant_schedule_public_id: UUID,
+        schedule_public_id: UUID,
         restaurant_schedule_data: RestaurantScheduleUpdate,
     ) -> RestaurantSchedule:
         restaurant = await self._get_restaurant_by_public_id_or_error(
             restaurant_public_id
         )
 
-        restaurant_schedule = await self.repo.get_by_public_id(
-            restaurant_schedule_public_id
-        )
+        restaurant_schedule = await self.repo.get_by_public_id(schedule_public_id)
 
         if not restaurant_schedule:
             raise RestaurantScheduleNotFoundError()

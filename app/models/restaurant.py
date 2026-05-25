@@ -1,13 +1,15 @@
-from datetime import datetime, time
+from datetime import date, datetime, time
 from decimal import Decimal
 from enum import Enum
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
     CheckConstraint,
+    Date,
     ForeignKey,
     Index,
     Numeric,
+    String,
     UniqueConstraint,
     func,
     text,
@@ -16,6 +18,11 @@ from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
+
+
+class ExceptionTypeEnum(str, Enum):
+    CLOSED = "CLOSED"
+    CUSTOM_HOURS = "CUSTOM_HOURS"
 
 
 class CampusEnum(str, Enum):
@@ -74,6 +81,11 @@ class Restaurant(Base):
         cascade="all, delete-orphan",
     )
 
+    schedule_exceptions: Mapped[list["RestaurantScheduleException"]] = relationship(
+        back_populates="restaurant",
+        cascade="all, delete-orphan",
+    )
+
 
 class RestaurantSchedule(Base):
     __tablename__ = "restaurant_schedules"
@@ -100,6 +112,10 @@ class RestaurantSchedule(Base):
             "ru_id",
             "weekday",
             "meal_period",
+        ),
+        CheckConstraint(
+            "opens_at IS NULL OR closes_at IS NULL OR opens_at < closes_at",
+            name="ck_exception_opens_before_closes",
         ),
     )
 
@@ -146,3 +162,72 @@ class RestaurantSchedule(Base):
     # back_populates conecta os dois lados:
     # restaurant.schedules <-> schedule.restaurant
     restaurant: Mapped[Restaurant] = relationship(back_populates="schedules")
+
+
+class RestaurantScheduleException(Base):
+    __tablename__ = "restaurant_schedule_exceptions"
+
+    __table_args__ = (
+        # unicidade quando meal_period está preenchido
+        UniqueConstraint(
+            "ru_id",
+            "exception_date",
+            "meal_period",
+            name="uq_restaurant_schedule_exception",
+        ),
+        # unicidade para exceções de dia inteiro (meal_period IS NULL):
+        # UniqueConstraint ignora NULLs no PostgreSQL, então é necessário um índice parcial
+        Index(
+            "uq_restaurant_schedule_exception_whole_day",
+            "ru_id",
+            "exception_date",
+            unique=True,
+            postgresql_where=text("meal_period IS NULL"),
+        ),
+        Index(
+            "ix_schedule_exception_lookup",
+            "ru_id",
+            "exception_date",
+        ),
+        CheckConstraint(
+            "opens_at IS NULL OR closes_at IS NULL OR opens_at < closes_at",
+            name="ck_exception_opens_before_closes",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    public_id: Mapped[UUID] = mapped_column(
+        default=uuid4,
+        unique=True,
+        index=True,
+    )
+
+    ru_id: Mapped[int] = mapped_column(ForeignKey("restaurants.id"))
+
+    exception_date: Mapped[date] = mapped_column(Date)
+
+    exception_type: Mapped[ExceptionTypeEnum] = mapped_column(
+        SQLEnum(ExceptionTypeEnum, name="exception_type_enum")
+    )
+
+    # null = exceção se aplica ao dia inteiro (ambos os períodos)
+    meal_period: Mapped[MealPeriodEnum | None] = mapped_column(
+        SQLEnum(MealPeriodEnum, name="meal_period_enum"),
+        nullable=True,
+    )
+
+    # preenchidos apenas quando exception_type = CUSTOM_HOURS
+    opens_at: Mapped[time | None]
+    closes_at: Mapped[time | None]
+
+    reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+    updated_at: Mapped[datetime] = mapped_column(
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    restaurant: Mapped[Restaurant] = relationship(back_populates="schedule_exceptions")

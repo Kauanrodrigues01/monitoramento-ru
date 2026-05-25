@@ -1,11 +1,10 @@
 from datetime import time
 
 from app.models.restaurant import CampusEnum, MealPeriodEnum
-from app.schemas.restaurant_schemas import (
-    RestaurantCreate,
+from app.schemas.restaurant_schemas import RestaurantCreate, RestaurantUpdate
+from app.schemas.restaurant_schedule_schemas import (
     RestaurantScheduleCreate,
     RestaurantScheduleUpdate,
-    RestaurantUpdate,
 )
 
 

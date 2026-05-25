@@ -22,5 +22,14 @@ class Settings(BaseSettings):
 
     ADMIN_API_KEY: str
 
+    APP_GEO_SECRET: str
+    GEO_SIGNATURE_MAX_SKEW_SECONDS: int = 60
+
+    QUEUE_REPORT_COOLDOWN_MINUTES: int = 3
+
+    REDIS_URL: str | None = None
+
+    DEBUG: bool = False
+
 
 settings = Settings()

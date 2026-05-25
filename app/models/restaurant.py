@@ -1,7 +1,11 @@
 from datetime import date, datetime, time
 from decimal import Decimal
 from enum import Enum
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
+
+if TYPE_CHECKING:
+    from app.models.queue_reports import QueueReport
 
 from sqlalchemy import (
     CheckConstraint,
@@ -34,6 +38,13 @@ class CampusEnum(str, Enum):
 class MealPeriodEnum(str, Enum):
     LUNCH = "LUNCH"
     DINNER = "DINNER"
+
+
+meal_period_enum = SQLEnum(
+    MealPeriodEnum,
+    name="meal_period_enum",
+    create_type=False,
+)
 
 
 class Restaurant(Base):
@@ -86,6 +97,11 @@ class Restaurant(Base):
         cascade="all, delete-orphan",
     )
 
+    reports: Mapped[list["QueueReport"]] = relationship(
+        back_populates="restaurant",
+        cascade="all, delete-orphan",
+    )
+
 
 class RestaurantSchedule(Base):
     __tablename__ = "restaurant_schedules"
@@ -115,7 +131,7 @@ class RestaurantSchedule(Base):
         ),
         CheckConstraint(
             "opens_at IS NULL OR closes_at IS NULL OR opens_at < closes_at",
-            name="ck_exception_opens_before_closes",
+            name="ck_schedule_opens_before_closes",
         ),
     )
 
@@ -129,13 +145,13 @@ class RestaurantSchedule(Base):
 
     # ForeignKey cria o vínculo no banco:
     # muitos schedules pertencem a um restaurant
-    ru_id: Mapped[int] = mapped_column(ForeignKey("restaurants.id"))
+    ru_id: Mapped[int] = mapped_column(
+        ForeignKey("restaurants.id", ondelete="CASCADE"),
+    )
 
     weekday: Mapped[int]
 
-    meal_period: Mapped[MealPeriodEnum] = mapped_column(
-        SQLEnum(MealPeriodEnum, name="meal_period_enum")
-    )
+    meal_period: Mapped[MealPeriodEnum] = mapped_column(meal_period_enum)
 
     # datetime.time -> SQL TIME
     # Ex: 11:00:00
@@ -203,17 +219,22 @@ class RestaurantScheduleException(Base):
         index=True,
     )
 
-    ru_id: Mapped[int] = mapped_column(ForeignKey("restaurants.id"))
+    ru_id: Mapped[int] = mapped_column(
+        ForeignKey("restaurants.id", ondelete="CASCADE"),
+    )
 
     exception_date: Mapped[date] = mapped_column(Date)
 
     exception_type: Mapped[ExceptionTypeEnum] = mapped_column(
-        SQLEnum(ExceptionTypeEnum, name="exception_type_enum")
+        SQLEnum(
+            ExceptionTypeEnum,
+            name="exception_type_enum",
+        )
     )
 
     # null = exceção se aplica ao dia inteiro (ambos os períodos)
     meal_period: Mapped[MealPeriodEnum | None] = mapped_column(
-        SQLEnum(MealPeriodEnum, name="meal_period_enum"),
+        meal_period_enum,
         nullable=True,
     )
 

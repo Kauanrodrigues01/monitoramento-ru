@@ -1,27 +1,49 @@
 services:
   api:
     build: .
+    restart: unless-stopped
     environment:
       DB_HOST: db
       DB_PORT: "5432"
-      DB_USER: ${DB_USER:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-postgres}
-      DB_NAME: ${DB_NAME:-mydb}
-      TEST_DB_NAME: ${TEST_DB_NAME:-test_db}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      LOG_ENV: ${LOG_ENV:-development}
-      ADMIN_API_KEY: ${ADMIN_API_KEY:-change-me}
+      DB_USER: "${DB_USER:-postgres}"
+      DB_PASSWORD: "${DB_PASSWORD:-postgres}"
+      DB_NAME: "${DB_NAME:-mydb}"
+      TEST_DB_NAME: "${TEST_DB_NAME:-test_db}"
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+      LOG_ENV: "${LOG_ENV:-development}"
+      ADMIN_API_KEY: "${ADMIN_API_KEY}"
+      APP_GEO_SECRET: "${APP_GEO_SECRET}"
+      GEO_SIGNATURE_MAX_SKEW_SECONDS: "${GEO_SIGNATURE_MAX_SKEW_SECONDS:-60}"
+      REDIS_URL: redis://redis:6379/0
     depends_on:
-      - db
+      db:
+        condition: service_started
+      redis:
+        condition: service_started
 
   db:
     image: postgres:17.2-alpine
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: ${DB_NAME:-mydb}
-      TEST_DB_NAME: ${TEST_DB_NAME:-test_db}
+      POSTGRES_USER: "${DB_USER:-postgres}"
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-postgres}"
+      POSTGRES_DB: "${DB_NAME:-mydb}"
+      TEST_DB_NAME: "${TEST_DB_NAME:-test_db}"
     ports:
       - "5432:5432"
     volumes:
+      - postgres_data:/var/lib/postgresql/data
       - ./scripts:/docker-entrypoint-initdb.d:ro
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:

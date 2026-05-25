@@ -6,3 +6,5 @@ alembic
 psycopg[binary]
 pydantic-settings
 python-multipart
+slowapi
+redis

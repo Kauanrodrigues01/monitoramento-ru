@@ -10,13 +10,21 @@ class RestaurantRepository:
     def __init__(self, db_session: AsyncSession):
         self.db_session = db_session
 
-    async def get_by_public_id(self, public_id: UUID) -> Restaurant | None:
+    async def get_by_public_id(
+        self, public_id: UUID, only_active: bool = True
+    ) -> Restaurant | None:
         query = select(Restaurant).where(Restaurant.public_id == public_id)
+        if only_active:
+            query = query.where(Restaurant.is_active.is_(True))
         result = await self.db_session.scalar(query)
         return result
 
-    async def get_by_name(self, name: str) -> Restaurant | None:
+    async def get_by_name(
+        self, name: str, only_active: bool = True
+    ) -> Restaurant | None:
         query = select(Restaurant).where(Restaurant.name == name)
+        if only_active:
+            query = query.where(Restaurant.is_active.is_(True))
         result = await self.db_session.scalar(query)
         return result
 
@@ -35,6 +43,9 @@ class RestaurantRepository:
         await self.db_session.refresh(restaurant)
         return restaurant
 
-    async def get_all(self) -> list[Restaurant]:
-        result = await self.db_session.scalars(select(Restaurant))
+    async def get_all(self, only_active: bool = True) -> list[Restaurant]:
+        query = select(Restaurant)
+        if only_active:
+            query = query.where(Restaurant.is_active.is_(True))
+        result = await self.db_session.scalars(query)
         return list(result.all())

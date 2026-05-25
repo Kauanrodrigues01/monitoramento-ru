@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends
 
-from app.core.openapi_responses import error_response
+from app.core.openapi_responses import INTERNAL_SERVER_ERROR_RESPONSE, error_response
 from app.dependencies.auth import require_admin_api_key
 from app.dependencies.restaurant_dependencies import (
     RestaurantScheduleServiceDep,
@@ -37,6 +37,7 @@ router = APIRouter(prefix="/restaurants", tags=["Restaurants"])
     responses=(
         error_response(RestaurantAlreadyExistsError)
         | error_response(InvalidAdminApiKeyError)
+        | INTERNAL_SERVER_ERROR_RESPONSE
     ),
 )
 async def create_restaurant(
@@ -48,6 +49,7 @@ async def create_restaurant(
 @router.get(
     "/",
     response_model=list[RestaurantResponse],
+    responses=INTERNAL_SERVER_ERROR_RESPONSE,
 )
 async def list_restaurants(service: RestaurantServiceDep):
     return await service.list_restaurants()
@@ -56,7 +58,7 @@ async def list_restaurants(service: RestaurantServiceDep):
 @router.get(
     "/{public_id}",
     response_model=RestaurantResponse,
-    responses=error_response(RestaurantNotFoundError),
+    responses=error_response(RestaurantNotFoundError) | INTERNAL_SERVER_ERROR_RESPONSE,
 )
 async def get_restaurant(public_id: UUID, service: RestaurantServiceDep):
     return await service.get_restaurant(public_id)
@@ -70,6 +72,7 @@ async def get_restaurant(public_id: UUID, service: RestaurantServiceDep):
         error_response(RestaurantAlreadyExistsError)
         | error_response(RestaurantNotFoundError)
         | error_response(InvalidAdminApiKeyError)
+        | INTERNAL_SERVER_ERROR_RESPONSE
     ),
 )
 async def update_restaurant(
@@ -87,6 +90,7 @@ async def update_restaurant(
         error_response(RestaurantNotFoundError)
         | error_response(RestaurantScheduleAlreadyExistsError)
         | error_response(InvalidAdminApiKeyError)
+        | INTERNAL_SERVER_ERROR_RESPONSE
     ),
 )
 async def create_restaurant_schedule(
@@ -100,7 +104,7 @@ async def create_restaurant_schedule(
 @router.get(
     "/{public_id}/schedules",
     response_model=list[RestaurantScheduleResponse],
-    responses=error_response(RestaurantNotFoundError),
+    responses=error_response(RestaurantNotFoundError) | INTERNAL_SERVER_ERROR_RESPONSE,
 )
 async def list_restaurant_schedules(
     public_id: UUID,
@@ -121,6 +125,7 @@ async def list_restaurant_schedules(
         | error_response(RestaurantScheduleAlreadyExistsError)
         | error_response(RestaurantScheduleOpensBeforeClosesError)
         | error_response(InvalidAdminApiKeyError)
+        | INTERNAL_SERVER_ERROR_RESPONSE
     ),
 )
 async def update_restaurant_schedule(

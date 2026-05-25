@@ -6,11 +6,11 @@ from app.dependencies.restaurant_dependencies import (
     get_restaurant_schedule_service,
     get_restaurant_service,
 )
-from app.repositories.restaurant_repository import (
-    RestaurantRepository,
-    RestaurantScheduleRepository,
-)
-from app.services.restaurant_service import RestaurantScheduleService, RestaurantService
+from app.repositories.restaurant_repository import RestaurantRepository
+
+from app.repositories.restaurant_schedule_repository import RestaurantScheduleRepository
+from app.services.restaurant_schedule_service import RestaurantScheduleService
+from app.services.restaurant_service import RestaurantService
 
 
 class TestGetRestaurantService:

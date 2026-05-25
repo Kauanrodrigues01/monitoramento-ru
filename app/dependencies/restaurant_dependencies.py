@@ -3,11 +3,10 @@ from typing import Annotated
 from fastapi import Depends
 
 from app.dependencies.database import DBSessionDep
-from app.repositories.restaurant_repository import (
-    RestaurantRepository,
-    RestaurantScheduleRepository,
-)
-from app.services.restaurant_service import RestaurantScheduleService, RestaurantService
+from app.repositories.restaurant_repository import RestaurantRepository
+from app.repositories.restaurant_schedule_repository import RestaurantScheduleRepository
+from app.services.restaurant_schedule_service import RestaurantScheduleService
+from app.services.restaurant_service import RestaurantService
 
 
 def get_restaurant_service(db_session: DBSessionDep) -> RestaurantService:
@@ -25,7 +24,7 @@ def get_restaurant_schedule_service(
 ) -> RestaurantScheduleService:
     return RestaurantScheduleService(
         repo=RestaurantScheduleRepository(db_session=db_session),
-        restaurant_repo=RestaurantRepository(db_session=db_session)
+        restaurant_repo=RestaurantRepository(db_session=db_session),
     )
 
 

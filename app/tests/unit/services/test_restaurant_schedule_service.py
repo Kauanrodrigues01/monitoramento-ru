@@ -12,11 +12,9 @@ from app.exceptions.restaurant_exceptions import (
     RestaurantScheduleOpensBeforeClosesError,
 )
 from app.models.restaurant import MealPeriodEnum
-from app.repositories.restaurant_repository import (
-    RestaurantRepository,
-    RestaurantScheduleRepository,
-)
-from app.services.restaurant_service import RestaurantScheduleService
+from app.repositories.restaurant_repository import RestaurantRepository
+from app.repositories.restaurant_schedule_repository import RestaurantScheduleRepository
+from app.services.restaurant_schedule_service import RestaurantScheduleService
 from app.tests.factories.restaurant_model_factory import (
     RestaurantFactory,
     RestaurantScheduleFactory,
@@ -58,11 +56,15 @@ class TestCreateRestaurantSchedule:
         created_schedule = RestaurantScheduleFactory.build(ru_id=restaurant.id)
 
         mock_restaurant_repository.get_by_public_id.return_value = restaurant
-        mock_schedule_repository.get_by_ru_id_weekday_and_meal_period.return_value = None
+        mock_schedule_repository.get_by_ru_id_weekday_and_meal_period.return_value = (
+            None
+        )
         mock_schedule_repository.create.return_value = created_schedule
         mock_schedule_repository.db_session.commit = AsyncMock()
 
-        result = await service.create_restaurant_schedule(restaurant.public_id, schedule_data)
+        result = await service.create_restaurant_schedule(
+            restaurant.public_id, schedule_data
+        )
 
         assert result.ru_id == restaurant.id
         mock_schedule_repository.create.assert_called_once()
@@ -76,7 +78,9 @@ class TestCreateRestaurantSchedule:
         schedule_data = build_restaurant_schedule_create_schema()
 
         mock_restaurant_repository.get_by_public_id.return_value = restaurant
-        mock_schedule_repository.get_by_ru_id_weekday_and_meal_period.return_value = None
+        mock_schedule_repository.get_by_ru_id_weekday_and_meal_period.return_value = (
+            None
+        )
         mock_schedule_repository.db_session.commit = AsyncMock()
 
         await service.create_restaurant_schedule(restaurant.public_id, schedule_data)
@@ -104,10 +108,14 @@ class TestCreateRestaurantSchedule:
         existing_schedule = RestaurantScheduleFactory.build(ru_id=restaurant.id)
 
         mock_restaurant_repository.get_by_public_id.return_value = restaurant
-        mock_schedule_repository.get_by_ru_id_weekday_and_meal_period.return_value = existing_schedule
+        mock_schedule_repository.get_by_ru_id_weekday_and_meal_period.return_value = (
+            existing_schedule
+        )
 
         with pytest.raises(RestaurantScheduleAlreadyExistsError):
-            await service.create_restaurant_schedule(restaurant.public_id, schedule_data)
+            await service.create_restaurant_schedule(
+                restaurant.public_id, schedule_data
+            )
 
         mock_schedule_repository.create.assert_not_called()
 
@@ -119,12 +127,16 @@ class TestCreateRestaurantSchedule:
         schedule_data = build_restaurant_schedule_create_schema()
 
         mock_restaurant_repository.get_by_public_id.return_value = restaurant
-        mock_schedule_repository.get_by_ru_id_weekday_and_meal_period.return_value = None
+        mock_schedule_repository.get_by_ru_id_weekday_and_meal_period.return_value = (
+            None
+        )
         mock_schedule_repository.create.side_effect = IntegrityError("", "", "")
         mock_schedule_repository.db_session.rollback = AsyncMock()
 
         with pytest.raises(RestaurantScheduleAlreadyExistsError):
-            await service.create_restaurant_schedule(restaurant.public_id, schedule_data)
+            await service.create_restaurant_schedule(
+                restaurant.public_id, schedule_data
+            )
 
         mock_schedule_repository.db_session.rollback.assert_called_once()
         mock_schedule_repository.db_session.commit.assert_not_called()
@@ -137,12 +149,16 @@ class TestCreateRestaurantSchedule:
         schedule_data = build_restaurant_schedule_create_schema()
 
         mock_restaurant_repository.get_by_public_id.return_value = restaurant
-        mock_schedule_repository.get_by_ru_id_weekday_and_meal_period.return_value = None
+        mock_schedule_repository.get_by_ru_id_weekday_and_meal_period.return_value = (
+            None
+        )
         mock_schedule_repository.create.side_effect = RuntimeError("Erro inesperado")
         mock_schedule_repository.db_session.rollback = AsyncMock()
 
         with pytest.raises(RuntimeError):
-            await service.create_restaurant_schedule(restaurant.public_id, schedule_data)
+            await service.create_restaurant_schedule(
+                restaurant.public_id, schedule_data
+            )
 
         mock_schedule_repository.db_session.rollback.assert_called_once()
 
@@ -156,7 +172,9 @@ class TestCreateRestaurantSchedule:
         )
 
         mock_restaurant_repository.get_by_public_id.return_value = restaurant
-        mock_schedule_repository.get_by_ru_id_weekday_and_meal_period.return_value = None
+        mock_schedule_repository.get_by_ru_id_weekday_and_meal_period.return_value = (
+            None
+        )
         mock_schedule_repository.db_session.commit = AsyncMock()
 
         await service.create_restaurant_schedule(restaurant.public_id, schedule_data)
@@ -176,11 +194,15 @@ class TestCreateRestaurantSchedule:
         existing_schedule = RestaurantScheduleFactory.build(ru_id=restaurant.id)
 
         mock_restaurant_repository.get_by_public_id.return_value = restaurant
-        mock_schedule_repository.get_by_ru_id_weekday_and_meal_period.return_value = existing_schedule
+        mock_schedule_repository.get_by_ru_id_weekday_and_meal_period.return_value = (
+            existing_schedule
+        )
 
-        with patch("app.services.restaurant_service.logger") as mock_logger:
+        with patch("app.services.restaurant_schedule_service.logger") as mock_logger:
             with pytest.raises(RestaurantScheduleAlreadyExistsError):
-                await service.create_restaurant_schedule(restaurant.public_id, schedule_data)
+                await service.create_restaurant_schedule(
+                    restaurant.public_id, schedule_data
+                )
 
             mock_logger.warning.assert_called_once()
             assert "duplicado" in mock_logger.warning.call_args[0][0]
@@ -213,13 +235,19 @@ class TestListRestaurantSchedules:
     ):
         restaurant = RestaurantFactory.build()
         lunch_schedules = [
-            RestaurantScheduleFactory.build(ru_id=restaurant.id, meal_period=MealPeriodEnum.LUNCH),
+            RestaurantScheduleFactory.build(
+                ru_id=restaurant.id, meal_period=MealPeriodEnum.LUNCH
+            ),
         ]
 
         mock_restaurant_repository.get_by_public_id.return_value = restaurant
-        mock_schedule_repository.list_by_ru_id_and_meal_period.return_value = lunch_schedules
+        mock_schedule_repository.list_by_ru_id_and_meal_period.return_value = (
+            lunch_schedules
+        )
 
-        result = await service.list_restaurant_schedules(restaurant.public_id, MealPeriodEnum.LUNCH)
+        result = await service.list_restaurant_schedules(
+            restaurant.public_id, MealPeriodEnum.LUNCH
+        )
 
         assert len(result) == 1
         mock_schedule_repository.list_by_ru_id_and_meal_period.assert_called_once_with(
@@ -339,7 +367,9 @@ class TestUpdateRestaurantSchedule:
         other_restaurant_schedule = RestaurantScheduleFactory.build(ru_id=99)
 
         mock_restaurant_repository.get_by_public_id.return_value = restaurant
-        mock_schedule_repository.get_by_public_id.return_value = other_restaurant_schedule
+        mock_schedule_repository.get_by_public_id.return_value = (
+            other_restaurant_schedule
+        )
 
         with pytest.raises(RestaurantScheduleNotFoundError):
             await service.update_restaurant_schedule(
@@ -406,7 +436,9 @@ class TestUpdateRestaurantSchedule:
 
         mock_restaurant_repository.get_by_public_id.return_value = restaurant
         mock_schedule_repository.get_by_public_id.return_value = schedule
-        mock_schedule_repository.db_session.commit.side_effect = IntegrityError("", "", "")
+        mock_schedule_repository.db_session.commit.side_effect = IntegrityError(
+            "", "", ""
+        )
         mock_schedule_repository.db_session.rollback = AsyncMock()
 
         with pytest.raises(RestaurantScheduleAlreadyExistsError):

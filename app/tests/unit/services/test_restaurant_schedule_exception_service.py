@@ -57,7 +57,9 @@ class TestCreateRestaurantScheduleException:
     ):
         restaurant = RestaurantFactory.build()
         exception_data = build_restaurant_schedule_exception_create_schema()
-        created_exception = RestaurantScheduleExceptionFactory.build(ru_id=restaurant.id)
+        created_exception = RestaurantScheduleExceptionFactory.build(
+            ru_id=restaurant.id
+        )
 
         mock_restaurant_repository.get_by_public_id.return_value = restaurant
         mock_exception_repository.get_by_ru_id_date_and_meal_period.return_value = None
@@ -110,7 +112,9 @@ class TestCreateRestaurantScheduleException:
         existing = RestaurantScheduleExceptionFactory.build(ru_id=restaurant.id)
 
         mock_restaurant_repository.get_by_public_id.return_value = restaurant
-        mock_exception_repository.get_by_ru_id_date_and_meal_period.return_value = existing
+        mock_exception_repository.get_by_ru_id_date_and_meal_period.return_value = (
+            existing
+        )
 
         with pytest.raises(RestaurantScheduleExceptionAlreadyExistsError):
             await service.create_restaurant_schedule_exception(
@@ -126,7 +130,9 @@ class TestCreateRestaurantScheduleException:
         existing = RestaurantScheduleExceptionFactory.build(ru_id=restaurant.id)
 
         mock_restaurant_repository.get_by_public_id.return_value = restaurant
-        mock_exception_repository.get_by_ru_id_date_and_meal_period.return_value = existing
+        mock_exception_repository.get_by_ru_id_date_and_meal_period.return_value = (
+            existing
+        )
 
         with pytest.raises(RestaurantScheduleExceptionAlreadyExistsError):
             await service.create_restaurant_schedule_exception(
@@ -168,7 +174,9 @@ class TestCreateRestaurantScheduleException:
         existing = RestaurantScheduleExceptionFactory.build(ru_id=restaurant.id)
 
         mock_restaurant_repository.get_by_public_id.return_value = restaurant
-        mock_exception_repository.get_by_ru_id_date_and_meal_period.return_value = existing
+        mock_exception_repository.get_by_ru_id_date_and_meal_period.return_value = (
+            existing
+        )
 
         with patch(
             "app.services.restaurant_schedule_exception_service.logger"
@@ -629,7 +637,9 @@ class TestUpdateRestaurantScheduleException:
 
         mock_restaurant_repository.get_by_public_id.return_value = restaurant
         mock_exception_repository.get_by_public_id.return_value = exception
-        mock_exception_repository.db_session.commit.side_effect = RuntimeError("Erro BD")
+        mock_exception_repository.db_session.commit.side_effect = RuntimeError(
+            "Erro BD"
+        )
         mock_exception_repository.db_session.rollback = AsyncMock()
 
         with pytest.raises(RuntimeError):

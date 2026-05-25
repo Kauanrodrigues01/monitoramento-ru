@@ -59,6 +59,67 @@ class QueueReportService:
         queue_report_data: QueueReportCreate,
         ip: str | None,
     ) -> QueueReport:
+        """
+        Cria um relato de fila para um restaurante.
+
+        Validações executadas em ordem:
+
+        1. RESTAURANTE EXISTE E ESTÁ ATIVO
+           Busca o restaurante pelo public_id. Lança RestaurantNotFoundError (404)
+           se não existir ou estiver inativo (is_active=False).
+
+        2. ASSINATURA DE GEOLOCALIZAÇÃO (GeoSignatureService)
+           Verifica que o relato veio de um cliente legítimo com acesso à secret.
+           - Timestamp: rejeita requisições com geo_timestamp fora da janela de
+             GEO_SIGNATURE_MAX_SKEW_SECONDS (padrão 60s; 24h quando DEBUG=True).
+             Protege contra replay attacks. → ExpiredGeoSignatureException (400)
+           - HMAC-SHA256: reconstrói o payload `{lat:.6f}|{lng:.6f}|{accuracy_m:.1f}|{geo_timestamp}`
+             e compara com a assinatura recebida em tempo constante (compare_digest).
+             → InvalidGeoSignatureException (400)
+
+        3. COOLDOWN POR IP (apenas IPs identificáveis)
+           Impede que o mesmo IP envie mais de 1 relato a cada
+           QUEUE_REPORT_COOLDOWN_MINUTES (padrão 3 min), contando apenas relatos
+           que chegaram até o commit. IPs não identificáveis ("unknown") pulam esta
+           verificação para não bloquear usuários anônimos entre si.
+           → QueueReportTooRecentError (429)
+
+        4. HORÁRIO DE FUNCIONAMENTO
+           Determina o meal_period do relato seguindo a ordem de prioridade:
+
+           4a. Exceção CLOSED sem meal_period (dia inteiro fechado):
+               Rejeita qualquer relato do dia, independente do horário.
+               → QueueReportOutsideMealHoursError (400)
+
+           4b. Exceções CUSTOM_HOURS (horários alternativos):
+               Substitui o horário regular do restaurante naquele período.
+               Tenta inferir o meal_period pela janela opens_at/closes_at da exceção.
+
+           4c. Horários regulares (fallback):
+               Consultado apenas se nenhuma CUSTOM_HOURS cobriu o horário do relato.
+               Tenta inferir o meal_period pelo schedule do dia da semana.
+
+           4d. Nenhum período encontrado:
+               O relato está fora de qualquer janela de funcionamento.
+               → QueueReportOutsideMealHoursError (400)
+
+           4e. Exceção CLOSED para o período específico:
+               Verificada após descobrir o meal_period, pois CLOSED por período
+               não possui janela de horário — o match é feito pelo campo meal_period.
+               → QueueReportOutsideMealHoursError (400)
+
+        5. GEOFENCE (ConfidenceScoreService + GeoUtils)
+           Calcula a distância haversine entre as coordenadas do relato e as do
+           restaurante. Rejeita se distance_m > geofence_radius_m.
+           → QueueReportLocationOutOfGeofenceError (400)
+
+        Campos calculados pelo servidor (não aceitos do cliente):
+        - meal_period: inferido pelo horário do relato (passos 4b/4c)
+        - ip_hash: SHA-256 do IP resolvido (nunca armazenamos o IP real)
+        - confidence_score: penalidades aplicadas por mock location, GPS impreciso
+          (accuracy ausente/0 ou entre 20–50m) e coordenadas com arredondamento suspeito
+        - geo_signature_valid: sempre True ao chegar aqui (passo 2 já validou)
+        """
         data = queue_report_data
         restaurant = await self._get_restaurant_by_public_id_or_error(
             restaurant_public_id

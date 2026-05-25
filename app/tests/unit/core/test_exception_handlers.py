@@ -35,6 +35,7 @@ class TestAppExceptionHandler:
         response = await app_exception_handler(_make_request(), exc)
 
         import json
+
         body = json.loads(response.body)
         assert body["detail"] == "Recurso já existe."
 

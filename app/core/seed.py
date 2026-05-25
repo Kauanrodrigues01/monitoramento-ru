@@ -5,7 +5,12 @@ from uuid import uuid4
 from sqlalchemy import select
 
 from app.core.database import AsyncSessionLocal
-from app.models.restaurant import CampusEnum, MealPeriodEnum, Restaurant, RestaurantSchedule
+from app.models.restaurant import (
+    CampusEnum,
+    MealPeriodEnum,
+    Restaurant,
+    RestaurantSchedule,
+)
 
 
 RESTAURANTS = [
@@ -62,7 +67,9 @@ async def seed_restaurants() -> None:
             )
 
             if existing:
-                print(f"Restaurant '{restaurant_data['name']}' already exists. Skipping.")
+                print(
+                    f"Restaurant '{restaurant_data['name']}' already exists. Skipping."
+                )
                 restaurant = existing
             else:
                 restaurant = Restaurant(public_id=uuid4(), **restaurant_data)
@@ -77,7 +84,8 @@ async def seed_restaurants() -> None:
                         select(RestaurantSchedule).where(
                             RestaurantSchedule.ru_id == restaurant.id,
                             RestaurantSchedule.weekday == weekday,
-                            RestaurantSchedule.meal_period == schedule_data["meal_period"],
+                            RestaurantSchedule.meal_period
+                            == schedule_data["meal_period"],
                         )
                     )
 

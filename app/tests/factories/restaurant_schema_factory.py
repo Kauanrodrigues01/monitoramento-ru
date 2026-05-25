@@ -1,7 +1,6 @@
 from datetime import time
 
-from app.models.restaurant import CampusEnum, MealPeriodEnum
-from app.models.restaurant import ExceptionTypeEnum
+from app.models.restaurant import CampusEnum, ExceptionTypeEnum, MealPeriodEnum
 from app.schemas.restaurant_schedule_exception_schemas import (
     RestaurantScheduleExceptionCreate,
     RestaurantScheduleExceptionUpdate,

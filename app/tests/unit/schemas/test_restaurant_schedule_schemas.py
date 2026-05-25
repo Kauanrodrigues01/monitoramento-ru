@@ -81,7 +81,9 @@ class TestRestaurantScheduleCreateSchema:
         assert data.closes_at == time(19, 0)
 
     def test_should_accept_dinner_meal_period(self):
-        data = build_restaurant_schedule_create_schema(meal_period=MealPeriodEnum.DINNER)
+        data = build_restaurant_schedule_create_schema(
+            meal_period=MealPeriodEnum.DINNER
+        )
 
         assert data.meal_period == MealPeriodEnum.DINNER
 

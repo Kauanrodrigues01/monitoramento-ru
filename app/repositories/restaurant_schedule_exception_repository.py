@@ -19,7 +19,9 @@ class RestaurantScheduleExceptionRepository:
         await self.db_session.refresh(exception)
         return exception
 
-    async def get_by_public_id(self, public_id: UUID) -> RestaurantScheduleException | None:
+    async def get_by_public_id(
+        self, public_id: UUID
+    ) -> RestaurantScheduleException | None:
         query = select(RestaurantScheduleException).where(
             RestaurantScheduleException.public_id == public_id
         )

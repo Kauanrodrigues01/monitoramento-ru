@@ -18,10 +18,18 @@ class RestaurantCreate(BaseModel):
         max_length=120,
         examples=[f"RU {CampusEnum.PALMARES.value}"],
     )
-    campus: CampusEnum = Field(examples=[CampusEnum.PALMARES.value])
+    campus: CampusEnum = Field(
+        description="Campus ao qual o restaurante pertence.",
+        examples=[CampusEnum.PALMARES.value],
+    )
     lat: Decimal = Field(ge=-90, le=90, examples=[-23.55052])
     lng: Decimal = Field(ge=-180, le=180, examples=[-46.63330])
-    geofence_radius_m: int = Field(ge=0, le=120, default=80)
+    geofence_radius_m: int = Field(
+        ge=0,
+        le=120,
+        default=80,
+        description="Raio em metros usado para validar se um queue_report foi enviado dentro da área do restaurante.",
+    )
     is_active: bool = True
 
     @field_validator("lat", "lng")
@@ -44,7 +52,9 @@ class RestaurantUpdate(BaseModel):
         examples=[f"RU {CampusEnum.PALMARES.value}"],
     )
     campus: CampusEnum | None = Field(
-        default=None, examples=[CampusEnum.PALMARES.value]
+        default=None,
+        description="Campus ao qual o restaurante pertence.",
+        examples=[CampusEnum.PALMARES.value],
     )
     lat: Decimal | None = Field(
         ge=-90,
@@ -62,6 +72,7 @@ class RestaurantUpdate(BaseModel):
         ge=0,
         le=120,
         default=None,
+        description="Raio em metros usado para validar se um queue_report foi enviado dentro da área do restaurante.",
     )
     is_active: bool | None = None
 
@@ -91,9 +102,13 @@ class RestaurantScheduleCreate(BaseModel):
     weekday: int = Field(
         ge=0,
         le=5,
+        description="Dia da semana: 0 = segunda-feira, 5 = sábado.",
         examples=[0, 1, 2, 3, 4, 5],
     )
-    meal_period: MealPeriodEnum = Field(examples=[MealPeriodEnum.LUNCH.value])
+    meal_period: MealPeriodEnum = Field(
+        description="Período da refeição (almoço ou jantar).",
+        examples=[MealPeriodEnum.LUNCH.value],
+    )
     opens_at: time = Field(examples=["11:00"])
     closes_at: time = Field(examples=["14:00"])
     is_active: bool = True
@@ -114,9 +129,13 @@ class RestaurantScheduleResponse(BaseModel):
     weekday: int = Field(
         ge=0,
         le=5,
+        description="Dia da semana: 0 = segunda-feira, 5 = sábado.",
         examples=[0, 1, 2, 3, 4, 5],
     )
-    meal_period: MealPeriodEnum = Field(examples=[MealPeriodEnum.LUNCH.value])
+    meal_period: MealPeriodEnum = Field(
+        description="Período da refeição (almoço ou jantar).",
+        examples=[MealPeriodEnum.LUNCH.value],
+    )
     opens_at: time = Field(examples=["11:00"])
     closes_at: time = Field(examples=["14:00"])
     is_active: bool
@@ -125,9 +144,17 @@ class RestaurantScheduleResponse(BaseModel):
 
 
 class RestaurantScheduleUpdate(BaseModel):
-    weekday: int | None = Field(ge=0, le=5, examples=[0, 1, 2, 3, 4, 5], default=None)
+    weekday: int | None = Field(
+        ge=0,
+        le=5,
+        default=None,
+        description="Dia da semana: 0 = segunda-feira, 5 = sábado.",
+        examples=[0, 1, 2, 3, 4, 5],
+    )
     meal_period: MealPeriodEnum | None = Field(
-        default=None, examples=[MealPeriodEnum.LUNCH.value]
+        default=None,
+        description="Período da refeição (almoço ou jantar).",
+        examples=[MealPeriodEnum.LUNCH.value],
     )
     opens_at: time | None = Field(default=None, examples=["11:00"])
     closes_at: time | None = Field(default=None, examples=["14:00"])

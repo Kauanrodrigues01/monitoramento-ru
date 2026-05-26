@@ -109,6 +109,20 @@
 
 ---
 
+## 🔭 Melhorias futuras (pós-MVP)
+
+### Observabilidade
+- [ ] **structlog** — substituir o logger padrão por structlog para logs estruturados em JSON, facilitando ingestão em ferramentas de observabilidade
+- [ ] **Prometheus + Grafana** — expor métricas via `prometheus-fastapi-instrumentator` (`/metrics`) e criar dashboards de latência, taxa de erros e volume de relatos por RU
+
+### Resiliência
+- [ ] **Timeouts em cascata** — configurar `statement_timeout` no PostgreSQL, `socket_timeout` no Redis, `httpx.Timeout` para clientes externos e `--timeout-keep-alive` no uvicorn. Ver [`docs/timeouts.md`](timeouts.md)
+
+### Segurança
+- [ ] **HTTP Security Headers** — adicionar middleware com `Strict-Transport-Security`, `X-Frame-Options` e `X-Content-Type-Options` nas respostas. Ver [`docs/security-headers.md`](security-headers.md)
+
+---
+
 ## 📝 Decisões de implementação que divergem do escopo (intencionais)
 
 | Item | Escopo | Implementado | Decisão |

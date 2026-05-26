@@ -58,8 +58,9 @@
 - [ ] `QueueReportService`
 
 ### 2. Rate limit
-- [ ] Adicionar `slowapi` a todos os endpoints da aplicação
-- [ ] Regras conforme escopo: 1 req/2min por IP+restaurant para reports, 60 req/min por IP para consultas
+- [x] Adicionar `slowapi` a todos os endpoints da aplicação
+- [x] Regras conforme escopo: 1 req/2min por IP+restaurant para reports, 60 req/min por IP para consultas
+- [ ] Definir regras de rate limit para endpoints de criação/atualização da aplicação e Aplicar rate limit a esses endpoints
 
 ### 3. Queue Reports — endpoint de listagem
 - [ ] `GET /v1/restaurants/{public_id}/reports/recent` — últimos 20 relatos do período vigente

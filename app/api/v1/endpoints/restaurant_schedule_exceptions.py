@@ -1,9 +1,14 @@
 from datetime import date
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
-from app.core.openapi_responses import INTERNAL_SERVER_ERROR_RESPONSE, error_response
+from app.core.openapi_responses import (
+    INTERNAL_SERVER_ERROR_RESPONSE,
+    RATE_LIMIT_RESPONSE,
+    error_response,
+)
+from app.core.rate_limiter import limiter
 from app.dependencies.auth import require_admin_api_key
 from app.dependencies.restaurant_dependencies import (
     RestaurantScheduleExceptionServiceDep,
@@ -49,10 +54,16 @@ async def create_restaurant_schedule_exception(
 @router.get(
     "/{restaurant_public_id}/schedule-exceptions",
     response_model=list[RestaurantScheduleExceptionResponse],
-    responses=error_response(RestaurantNotFoundError) | INTERNAL_SERVER_ERROR_RESPONSE,
+    responses=(
+        error_response(RestaurantNotFoundError)
+        | RATE_LIMIT_RESPONSE
+        | INTERNAL_SERVER_ERROR_RESPONSE
+    ),
 )
+@limiter.limit("60/minute")
 async def list_restaurant_schedule_exceptions(
     restaurant_public_id: UUID,
+    request: Request,
     service: RestaurantScheduleExceptionServiceDep,
     exception_date: date | None = None,
 ):

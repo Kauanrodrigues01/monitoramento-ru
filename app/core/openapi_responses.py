@@ -37,6 +37,30 @@ RATE_LIMIT_RESPONSE: dict = {
 }
 
 
+def rate_limit_with_cooldown_response(cooldown_exc: type) -> dict:
+    """429 com dois exemplos: cooldown de negócio específico + rate limit global do slowapi."""
+    return {
+        429: {
+            "description": "Rate limit excedido ou cooldown ativo.",
+            "content": {
+                "application/json": {
+                    "examples": {
+                        "cooldown": {
+                            "summary": "Cooldown por IP",
+                            "value": {"detail": cooldown_exc.detail},
+                        },
+                        "rate_limit": {
+                            "summary": "Rate limit global",
+                            "value": {"detail": _RATE_LIMIT_DETAIL},
+                        },
+                    }
+                }
+            },
+            "headers": RATE_LIMIT_RESPONSE[429]["headers"],
+        }
+    }
+
+
 def error_response(exc: type) -> dict:
     return {
         exc.status_code: {

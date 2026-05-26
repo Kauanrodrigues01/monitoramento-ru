@@ -1,9 +1,10 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.queue_reports import QueueReport
+from app.models.restaurant import MealPeriodEnum
 
 
 class QueueReportRepository:
@@ -27,3 +28,28 @@ class QueueReportRepository:
             .limit(1)
         )
         return result.scalar_one_or_none()
+
+    async def list_recent_by_period(
+        self,
+        ru_id: int,
+        meal_period: MealPeriodEnum,
+        day: date,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[QueueReport]:
+        day_start = datetime(day.year, day.month, day.day)
+        day_end = day_start + timedelta(days=1)
+        query = (
+            select(QueueReport)
+            .where(
+                QueueReport.ru_id == ru_id,
+                QueueReport.meal_period == meal_period,
+                QueueReport.created_at >= day_start,
+                QueueReport.created_at < day_end,
+            )
+            .order_by(QueueReport.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        result = await self.db_session.execute(query)
+        return result.scalars().all()

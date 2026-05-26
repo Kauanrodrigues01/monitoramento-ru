@@ -19,12 +19,6 @@ def _build_report_response_payload(**kwargs) -> dict:
         "public_id": uuid4(),
         "status": ReportStatusEnum.SMALL,
         "meal_period": MealPeriodEnum.LUNCH,
-        "lat": Decimal("-3.747361"),
-        "lng": Decimal("-38.523060"),
-        "accuracy_m": None,
-        "confidence_score": Decimal("1.00"),
-        "is_mock_location": False,
-        "geo_signature_valid": True,
         "created_at": datetime.now(),
     }
     data.update(kwargs)
@@ -272,12 +266,6 @@ class TestQueueReportResponseSchema:
         assert data.public_id == payload["public_id"]
         assert data.status == ReportStatusEnum.SMALL
         assert data.meal_period == MealPeriodEnum.LUNCH
-        assert data.lat == Decimal("-3.747361")
-        assert data.lng == Decimal("-38.523060")
-        assert data.accuracy_m is None
-        assert data.confidence_score == Decimal("1.00")
-        assert data.is_mock_location is False
-        assert data.geo_signature_valid is True
 
     def test_should_validate_from_orm_object(self):
         payload = _build_report_response_payload()
@@ -313,20 +301,6 @@ class TestQueueReportResponseSchema:
 
         assert "ip_hash" not in data.model_dump()
 
-    def test_should_accept_null_accuracy_m(self):
-        payload = _build_report_response_payload(accuracy_m=None)
-
-        data = QueueReportResponse(**payload)
-
-        assert data.accuracy_m is None
-
-    def test_should_accept_accuracy_m_with_value(self):
-        payload = _build_report_response_payload(accuracy_m=Decimal("12.50"))
-
-        data = QueueReportResponse(**payload)
-
-        assert data.accuracy_m == Decimal("12.50")
-
     def test_should_accept_all_valid_statuses(self):
         for status in ReportStatusEnum:
             payload = _build_report_response_payload(status=status)
@@ -349,56 +323,9 @@ class TestQueueReportResponseSchema:
             "public_id",
             "status",
             "meal_period",
-            "lat",
-            "lng",
-            "accuracy_m",
-            "confidence_score",
-            "is_mock_location",
-            "geo_signature_valid",
             "created_at",
         }
         assert set(dump.keys()) == expected_fields
-
-    def test_should_validate_from_orm_object_with_accuracy_m(self):
-        payload = _build_report_response_payload(accuracy_m=Decimal("5.75"))
-        orm_obj = SimpleNamespace(**payload)
-
-        data = QueueReportResponse.model_validate(orm_obj)
-
-        assert data.accuracy_m == Decimal("5.75")
-
-    def test_should_validate_confidence_score_from_orm(self):
-        payload = _build_report_response_payload(confidence_score=Decimal("0.80"))
-        orm_obj = SimpleNamespace(**payload)
-
-        data = QueueReportResponse.model_validate(orm_obj)
-
-        assert data.confidence_score == Decimal("0.80")
-
-    def test_should_reflect_is_mock_location_true(self):
-        payload = _build_report_response_payload(is_mock_location=True)
-
-        data = QueueReportResponse(**payload)
-
-        assert data.is_mock_location is True
-
-    def test_should_reflect_geo_signature_valid_false(self):
-        payload = _build_report_response_payload(geo_signature_valid=False)
-
-        data = QueueReportResponse(**payload)
-
-        assert data.geo_signature_valid is False
-
-    def test_should_not_truncate_coordinates(self):
-        # Response retorna os valores exatamente como armazenados, sem truncamento
-        lat = Decimal("-3.747361")
-        lng = Decimal("-38.523060")
-        payload = _build_report_response_payload(lat=lat, lng=lng)
-
-        data = QueueReportResponse(**payload)
-
-        assert data.lat == lat
-        assert data.lng == lng
 
     def test_should_not_expose_geo_signature(self):
         # geo_signature nunca é devolvido ao cliente
@@ -423,14 +350,6 @@ class TestQueueReportResponseSchema:
 
         assert data.created_at == expected
 
-    def test_should_require_accuracy_m_to_be_explicitly_passed(self):
-        # accuracy_m: Decimal | None sem default — campo obrigatório (None válido, ausente não)
-        payload = _build_report_response_payload()
-        del payload["accuracy_m"]
-
-        with pytest.raises(ValidationError):
-            QueueReportResponse(**payload)
-
     def test_should_require_meal_period(self):
         payload = _build_report_response_payload()
         del payload["meal_period"]
@@ -441,13 +360,6 @@ class TestQueueReportResponseSchema:
     def test_should_require_created_at(self):
         payload = _build_report_response_payload()
         del payload["created_at"]
-
-        with pytest.raises(ValidationError):
-            QueueReportResponse(**payload)
-
-    def test_should_require_confidence_score(self):
-        payload = _build_report_response_payload()
-        del payload["confidence_score"]
 
         with pytest.raises(ValidationError):
             QueueReportResponse(**payload)

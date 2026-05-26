@@ -78,19 +78,4 @@ class QueueReportResponse(BaseModel):
     public_id: UUID = Field(examples=[str(uuid4())])
     status: ReportStatusEnum = Field(examples=[ReportStatusEnum.SMALL.value])
     meal_period: MealPeriodEnum = Field(examples=[MealPeriodEnum.LUNCH.value])
-    lat: Decimal = Field(examples=[-3.74736])
-    lng: Decimal = Field(examples=[-38.52306])
-    accuracy_m: Decimal | None = Field(examples=[12.5])
-    confidence_score: Decimal = Field(
-        description="Pontuação de confiança do relato (0 a 1), calculada pelo servidor.",
-        examples=[1.00],
-    )
-    is_mock_location: bool = Field(
-        description="Indica se o dispositivo reportou localização simulada.",
-        examples=[False],
-    )
-    geo_signature_valid: bool = Field(
-        description="Indica se a assinatura de geolocalização foi validada com sucesso pelo servidor.",
-        examples=[True],
-    )
     created_at: datetime = Field(examples=[datetime(2026, 5, 25, 10, 30, 0)])

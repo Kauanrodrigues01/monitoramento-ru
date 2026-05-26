@@ -72,8 +72,6 @@ class QueueReport(Base):
         default=False, server_default=text("false")
     )
 
-    geo_signature_valid: Mapped[bool]
-
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
     restaurant: Mapped[Restaurant] = relationship(back_populates="reports")

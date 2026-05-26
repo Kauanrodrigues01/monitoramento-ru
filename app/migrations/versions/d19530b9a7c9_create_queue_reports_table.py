@@ -59,7 +59,6 @@ def upgrade() -> None:
             server_default=sa.text("false"),
             nullable=False,
         ),
-        sa.Column("geo_signature_valid", sa.Boolean(), nullable=False),
         sa.Column(
             "created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False
         ),

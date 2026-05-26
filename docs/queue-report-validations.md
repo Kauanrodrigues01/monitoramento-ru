@@ -129,4 +129,3 @@ Estes valores **nunca são aceitos do cliente** — são sempre derivados pelo s
 | `meal_period` | Inferido pelo horário do relato via schedules e exceções (passos 4b/4c) |
 | `ip_hash` | SHA-256 do IP resolvido — o IP real nunca é armazenado (LGPD) |
 | `confidence_score` | Penalidades aplicadas por: mock location (−0.80), accuracy ausente/0 (−0.30), accuracy entre 20–50m (−0.15), coordenadas com arredondamento suspeito (−0.50). Mínimo: 0.05 |
-| `geo_signature_valid` | Sempre `true` ao chegar aqui — a validação do passo 2 já garantiu |

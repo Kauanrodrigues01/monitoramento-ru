@@ -23,7 +23,41 @@ async def lifespan(_: FastAPI):
     logger.info("Application shutdown")
 
 
-app = FastAPI(title="Monitoramento RU API", version="1.0.0", lifespan=lifespan)
+_TAGS_METADATA = [
+    {
+        "name": "Restaurants",
+        "description": (
+            "Restaurantes Universitários cadastrados no sistema.\n\n"
+        ),
+    },
+    {
+        "name": "Restaurant Schedules",
+        "description": (
+            "Horários regulares de funcionamento por período de refeição (almoço/jantar).\n\n"
+        ),
+    },
+    {
+        "name": "Restaurant Schedule Exceptions",
+        "description": (
+            "Exceções pontuais que sobrescrevem o horário regular — "
+            "feriados, fechamentos e horários especiais.\n\n"
+        ),
+    },
+    {
+        "name": "Queue Reports",
+        "description": (
+            "Relatos de situação da fila enviados por clientes. "
+            "Requer geo-assinatura válida.\n\n"
+        ),
+    },
+]
+
+app = FastAPI(
+    title="Monitoramento RU API",
+    version="1.0.0",
+    lifespan=lifespan,
+    openapi_tags=_TAGS_METADATA,
+)
 
 app.state.limiter = limiter
 

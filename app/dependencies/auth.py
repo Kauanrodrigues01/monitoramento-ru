@@ -6,6 +6,10 @@ from app.exceptions.auth import InvalidAdminApiKeyError
 
 api_key_scheme = APIKeyHeader(
     name="X-Admin-Key",
+    description=(
+        "Chave de acesso administrativo. Obrigatória em alguns endpoints de criação e edição.\n\n"
+        "Obtenha a chave com o administrador do sistema."
+    ),
     auto_error=False,
 )
 

@@ -1,0 +1,52 @@
+# Version control
+.git/
+.gitignore
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+
+# Test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Linter cache
+.ruff_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env/
+
+# Environment files (never ship secrets into the image)
+.env
+.env.*
+!.env.example
+
+# Docker files (not needed inside the container)
+docker/
+Dockerfile
+Dockerfile.dev
+
+# Docs
+docs/
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/

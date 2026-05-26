@@ -7,7 +7,10 @@ _ROOT = Path(__file__).resolve().parents[2]
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=_ROOT / ".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=_ROOT / ".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        env_ignore_empty=True,
     )
 
     DB_HOST: str = "localhost"
@@ -28,6 +31,10 @@ class Settings(BaseSettings):
     QUEUE_REPORT_COOLDOWN_MINUTES: int = 2
 
     REDIS_URL: str | None = None
+
+    # JSON array de origens permitidas. Ex: '["https://app.exemplo.com"]'
+    # Use ["*"] apenas em desenvolvimento — incompatível com allow_credentials=True.
+    CORS_ALLOWED_ORIGINS: list[str] = ["*"]
 
     DEBUG: bool = False
 

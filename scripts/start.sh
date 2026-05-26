@@ -7,4 +7,4 @@ alembic upgrade head
 
 python -m app.core.seed
 
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --loop auto --http auto --workers 2

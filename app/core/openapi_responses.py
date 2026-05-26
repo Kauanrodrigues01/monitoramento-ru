@@ -13,12 +13,28 @@ INTERNAL_SERVER_ERROR_RESPONSE: dict = {
 
 RATE_LIMIT_RESPONSE: dict = {
     429: {
-        "model": ErrorResponse,
         "description": "Muitas requisições. Tente novamente em alguns instantes.",
-        "content": {"application/json": {"example": {"detail": _RATE_LIMIT_DETAIL}}},
+        "content": {
+            "application/json": {
+                "example": {"detail": _RATE_LIMIT_DETAIL},
+            }
+        },
+        "headers": {
+            "Retry-After": {
+                "description": "Tempo em segundos até uma nova tentativa ser permitida.",
+                "schema": {"type": "integer"},
+            },
+            "X-RateLimit-Limit": {
+                "description": "Limite máximo de requisições permitido.",
+                "schema": {"type": "integer"},
+            },
+            "X-RateLimit-Remaining": {
+                "description": "Quantidade restante de requisições disponíveis.",
+                "schema": {"type": "integer"},
+            },
+        },
     }
 }
-
 
 
 def error_response(exc: type) -> dict:

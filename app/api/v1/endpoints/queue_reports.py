@@ -4,7 +4,6 @@ from fastapi import APIRouter, Request
 
 from app.core.openapi_responses import (
     INTERNAL_SERVER_ERROR_RESPONSE,
-    RATE_LIMIT_RESPONSE,
     error_response,
 )
 from app.core.rate_limiter import limiter
@@ -36,7 +35,6 @@ router = APIRouter(prefix="/restaurants", tags=["Queue Reports"])
         | error_response(QueueReportLocationOutOfGeofenceError)
         | error_response(QueueReportOutsideMealHoursError)
         | error_response(QueueReportTooRecentError)
-        | RATE_LIMIT_RESPONSE
         | INTERNAL_SERVER_ERROR_RESPONSE
     ),
 )

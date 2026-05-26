@@ -25,9 +25,15 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
 
 
 async def rate_limit_exceeded_handler(
-    request: Request, exc: RateLimitExceeded
+    request: Request,
+    exc: RateLimitExceeded,
 ) -> JSONResponse:
-    logger.warning("Rate limit atingido em %s", request.url.path)
-    response = JSONResponse(status_code=429, content={"detail": _RATE_LIMIT_DETAIL})
-    response.headers["Retry-After"] = str(getattr(exc, "retry_after", ""))
+    response = JSONResponse(
+        status_code=429,
+        content={"detail": _RATE_LIMIT_DETAIL},
+    )
+
+    if exc.headers:
+        response.headers.update(exc.headers)
+
     return response

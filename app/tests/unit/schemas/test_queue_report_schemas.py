@@ -223,6 +223,45 @@ class TestQueueReportCreateSchema:
         with pytest.raises(ValidationError):
             build_queue_report_create_schema(geo_timestamp=0)
 
+    def test_should_accept_geo_timestamp_as_whole_number_float(self):
+        # Pydantic v2 coerce float sem parte fracionária para int
+        data = build_queue_report_create_schema(geo_timestamp=1748166600.0)
+
+        assert data.geo_timestamp == 1748166600
+
+    def test_should_reject_geo_timestamp_as_float_with_fraction(self):
+        with pytest.raises(ValidationError):
+            build_queue_report_create_schema(geo_timestamp=1748166600.5)
+
+    def test_should_reject_geo_signature_with_whitespace(self):
+        # Espaços não são caracteres hex
+        with pytest.raises(ValidationError):
+            build_queue_report_create_schema(geo_signature=" " * 64)
+
+    def test_should_normalize_mixed_case_geo_signature(self):
+        mixed_sig = "aAbBcCdDeEfF" * 5 + "aAbB"  # 60 + 4 = 64 chars
+        data = build_queue_report_create_schema(geo_signature=mixed_sig)
+
+        assert data.geo_signature == mixed_sig.lower()
+
+    def test_should_include_geo_signature_in_model_dump(self):
+        # geo_signature deve estar no dump para que o service possa excluí-lo via
+        # _SCHEMA_ONLY_FIELDS ao construir o QueueReport
+        data = build_queue_report_create_schema()
+
+        assert "geo_signature" in data.model_dump()
+
+    def test_should_include_geo_timestamp_in_model_dump(self):
+        data = build_queue_report_create_schema()
+
+        assert "geo_timestamp" in data.model_dump()
+
+    def test_should_accept_large_accuracy_m(self):
+        # Não há limite superior em accuracy_m
+        data = build_queue_report_create_schema(accuracy_m="9999.99")
+
+        assert data.accuracy_m == Decimal("9999.99")
+
 
 class TestQueueReportResponseSchema:
     def test_should_validate_from_dict(self):
@@ -360,3 +399,62 @@ class TestQueueReportResponseSchema:
 
         assert data.lat == lat
         assert data.lng == lng
+
+    def test_should_not_expose_geo_signature(self):
+        # geo_signature nunca é devolvido ao cliente
+        payload = _build_report_response_payload()
+
+        data = QueueReportResponse(**payload)
+
+        assert "geo_signature" not in data.model_dump()
+
+    def test_should_not_expose_geo_timestamp(self):
+        payload = _build_report_response_payload()
+
+        data = QueueReportResponse(**payload)
+
+        assert "geo_timestamp" not in data.model_dump()
+
+    def test_should_preserve_created_at_value(self):
+        expected = datetime(2026, 5, 25, 10, 30, 0)
+        payload = _build_report_response_payload(created_at=expected)
+
+        data = QueueReportResponse(**payload)
+
+        assert data.created_at == expected
+
+    def test_should_require_accuracy_m_to_be_explicitly_passed(self):
+        # accuracy_m: Decimal | None sem default — campo obrigatório (None válido, ausente não)
+        payload = _build_report_response_payload()
+        del payload["accuracy_m"]
+
+        with pytest.raises(ValidationError):
+            QueueReportResponse(**payload)
+
+    def test_should_require_meal_period(self):
+        payload = _build_report_response_payload()
+        del payload["meal_period"]
+
+        with pytest.raises(ValidationError):
+            QueueReportResponse(**payload)
+
+    def test_should_require_created_at(self):
+        payload = _build_report_response_payload()
+        del payload["created_at"]
+
+        with pytest.raises(ValidationError):
+            QueueReportResponse(**payload)
+
+    def test_should_require_confidence_score(self):
+        payload = _build_report_response_payload()
+        del payload["confidence_score"]
+
+        with pytest.raises(ValidationError):
+            QueueReportResponse(**payload)
+
+    def test_should_require_public_id(self):
+        payload = _build_report_response_payload()
+        del payload["public_id"]
+
+        with pytest.raises(ValidationError):
+            QueueReportResponse(**payload)

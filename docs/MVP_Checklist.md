@@ -50,11 +50,11 @@
 ## 🔲 Pendente — ordenado por prioridade
 
 ### 1. Testes unitários pendentes
-- [ ] `geo_utils.py` e `utils.py` em `core/`
-- [ ] Schemas de `QueueReport` (verificar cobertura)
-- [ ] `IpService`
-- [ ] `ConfidenceScoreService`
-- [ ] `GeoSignatureService`
+- [x] `geo_utils.py` e `utils.py` em `core/`
+- [x] Schemas de `QueueReport` (verificar cobertura)
+- [x] `IpService`
+- [x] `ConfidenceScoreService`
+- [x] `GeoSignatureService`
 - [ ] `QueueReportService`
 
 ### 2. Rate limit

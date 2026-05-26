@@ -9,6 +9,11 @@ from app.core.openapi_responses import (
     error_response,
 )
 from app.core.rate_limiter import limiter
+from app.core.rate_limits import (
+    CREATE_SCHEDULE_EXCEPTION_RATE_LIMIT,
+    READ_RATE_LIMIT,
+    UPDATE_SCHEDULE_EXCEPTION_RATE_LIMIT,
+)
 from app.dependencies.auth import require_admin_api_key
 from app.dependencies.restaurant_dependencies import (
     RestaurantScheduleExceptionServiceDep,
@@ -38,11 +43,14 @@ router = APIRouter(prefix="/restaurants", tags=["Restaurant Schedule Exceptions"
         error_response(RestaurantNotFoundError)
         | error_response(RestaurantScheduleExceptionAlreadyExistsError)
         | error_response(InvalidAdminApiKeyError)
+        | RATE_LIMIT_RESPONSE
         | INTERNAL_SERVER_ERROR_RESPONSE
     ),
 )
+@limiter.limit(CREATE_SCHEDULE_EXCEPTION_RATE_LIMIT)
 async def create_restaurant_schedule_exception(
     restaurant_public_id: UUID,
+    request: Request,
     data: RestaurantScheduleExceptionCreate,
     service: RestaurantScheduleExceptionServiceDep,
 ):
@@ -60,7 +68,7 @@ async def create_restaurant_schedule_exception(
         | INTERNAL_SERVER_ERROR_RESPONSE
     ),
 )
-@limiter.limit("60/minute")
+@limiter.limit(READ_RATE_LIMIT)
 async def list_restaurant_schedule_exceptions(
     restaurant_public_id: UUID,
     request: Request,
@@ -82,12 +90,15 @@ async def list_restaurant_schedule_exceptions(
         | error_response(RestaurantScheduleExceptionAlreadyExistsError)
         | error_response(RestaurantScheduleExceptionInvalidStateError)
         | error_response(InvalidAdminApiKeyError)
+        | RATE_LIMIT_RESPONSE
         | INTERNAL_SERVER_ERROR_RESPONSE
     ),
 )
+@limiter.limit(UPDATE_SCHEDULE_EXCEPTION_RATE_LIMIT)
 async def update_restaurant_schedule_exception(
     restaurant_public_id: UUID,
     restaurant_schedule_exception_public_id: UUID,
+    request: Request,
     data: RestaurantScheduleExceptionUpdate,
     service: RestaurantScheduleExceptionServiceDep,
 ):

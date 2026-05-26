@@ -60,7 +60,20 @@
 ### 2. Rate limit
 - [x] Adicionar `slowapi` a todos os endpoints da aplicação
 - [x] Regras conforme escopo: 1 req/2min por IP+restaurant para reports, 60 req/min por IP para consultas
-- [ ] Definir regras de rate limit para endpoints de criação/atualização da aplicação e Aplicar rate limit a esses endpoints
+- [x] Definir regras de rate limit para endpoints de criação/atualização da aplicação e Aplicar rate limit a esses endpoints
+
+**Regras definidas** (`app/core/rate_limits.py`):
+
+| Operação | Limite |
+|---|---|
+| `GET` (todos os endpoints) | 60 req/min por IP |
+| `POST /restaurants` | 10 req/min por IP |
+| `PATCH /restaurants/{id}` | 10 req/min por IP |
+| `POST /restaurants/{id}/schedules` | 20 req/min por IP |
+| `PATCH /restaurants/{id}/schedules/{id}` | 20 req/min por IP |
+| `POST /restaurants/{id}/schedule-exceptions` | 5 req/min por IP |
+| `PATCH /restaurants/{id}/schedule-exceptions/{id}` | 10 req/min por IP |
+| `POST /restaurants/{id}/queue-reports` | 20 req/min por IP (DoS bruto; cooldown real no service) |
 
 ### 3. Queue Reports — endpoint de listagem
 - [ ] `GET /v1/restaurants/{public_id}/reports/recent` — últimos 20 relatos do período vigente

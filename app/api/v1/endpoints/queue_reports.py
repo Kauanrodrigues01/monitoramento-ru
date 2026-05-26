@@ -4,9 +4,11 @@ from fastapi import APIRouter, Request
 
 from app.core.openapi_responses import (
     INTERNAL_SERVER_ERROR_RESPONSE,
+    RATE_LIMIT_RESPONSE,
     error_response,
 )
 from app.core.rate_limiter import limiter
+from app.core.rate_limits import QUEUE_REPORT_RATE_LIMIT
 from app.dependencies.queue_report_dependencies import QueueReportServiceDep
 from app.exceptions.geo_signature_exceptions import (
     ExpiredGeoSignatureException,
@@ -35,12 +37,11 @@ router = APIRouter(prefix="/restaurants", tags=["Queue Reports"])
         | error_response(QueueReportLocationOutOfGeofenceError)
         | error_response(QueueReportOutsideMealHoursError)
         | error_response(QueueReportTooRecentError)
+        | RATE_LIMIT_RESPONSE
         | INTERNAL_SERVER_ERROR_RESPONSE
     ),
 )
-@limiter.limit(
-    "20/minute"
-)  # Proteção contra DoS bruto; cooldown real é feito no service
+@limiter.limit(QUEUE_REPORT_RATE_LIMIT)  # Proteção contra DoS bruto; cooldown real é feito no service
 async def create_queue_report(
     restaurant_public_id: UUID,
     queue_report_data: QueueReportCreate,

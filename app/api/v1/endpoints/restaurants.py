@@ -8,6 +8,11 @@ from app.core.openapi_responses import (
     error_response,
 )
 from app.core.rate_limiter import limiter
+from app.core.rate_limits import (
+    CREATE_RESTAURANT_RATE_LIMIT,
+    READ_RATE_LIMIT,
+    UPDATE_RESTAURANT_RATE_LIMIT,
+)
 from app.dependencies.auth import require_admin_api_key
 from app.dependencies.restaurant_dependencies import RestaurantServiceDep
 from app.exceptions.auth import InvalidAdminApiKeyError
@@ -32,11 +37,13 @@ router = APIRouter(prefix="/restaurants", tags=["Restaurants"])
     responses=(
         error_response(RestaurantAlreadyExistsError)
         | error_response(InvalidAdminApiKeyError)
+        | RATE_LIMIT_RESPONSE
         | INTERNAL_SERVER_ERROR_RESPONSE
     ),
 )
+@limiter.limit(CREATE_RESTAURANT_RATE_LIMIT)
 async def create_restaurant(
-    restaurant_data: RestaurantCreate, service: RestaurantServiceDep
+    request: Request, restaurant_data: RestaurantCreate, service: RestaurantServiceDep
 ):
     return await service.create_restaurant(restaurant_data)
 
@@ -46,7 +53,7 @@ async def create_restaurant(
     response_model=list[RestaurantResponse],
     responses=RATE_LIMIT_RESPONSE | INTERNAL_SERVER_ERROR_RESPONSE,
 )
-@limiter.limit("60/minute")
+@limiter.limit(READ_RATE_LIMIT)
 async def list_restaurants(request: Request, service: RestaurantServiceDep):
     return await service.list_restaurants()
 
@@ -60,7 +67,7 @@ async def list_restaurants(request: Request, service: RestaurantServiceDep):
         | INTERNAL_SERVER_ERROR_RESPONSE
     ),
 )
-@limiter.limit("60/minute")
+@limiter.limit(READ_RATE_LIMIT)
 async def get_restaurant(
     public_id: UUID, request: Request, service: RestaurantServiceDep
 ):
@@ -75,10 +82,15 @@ async def get_restaurant(
         error_response(RestaurantAlreadyExistsError)
         | error_response(RestaurantNotFoundError)
         | error_response(InvalidAdminApiKeyError)
+        | RATE_LIMIT_RESPONSE
         | INTERNAL_SERVER_ERROR_RESPONSE
     ),
 )
+@limiter.limit(UPDATE_RESTAURANT_RATE_LIMIT)
 async def update_restaurant(
-    public_id: UUID, restaurant_data: RestaurantUpdate, service: RestaurantServiceDep
+    public_id: UUID,
+    request: Request,
+    restaurant_data: RestaurantUpdate,
+    service: RestaurantServiceDep,
 ):
     return await service.update_restaurant(public_id, restaurant_data)

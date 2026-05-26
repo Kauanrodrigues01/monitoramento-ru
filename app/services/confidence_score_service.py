@@ -10,7 +10,7 @@ PENALTIES = {
     "accuracy_m_none_or_zero": Decimal("0.30"),
     "accuracy_m_20_to_50": Decimal("0.15"),
     # lat/lng com precisão suspeita (coordenadas redondas)
-    "suspicious_round_coordinates": Decimal("0.50"),
+    "suspicious_round_coordinates": Decimal("0.25"),
     # IP com histórico de relatos inconsistentes
     "ip_with_inconsistent_history": Decimal("0.25"),
     # Relato inconsistente com histórico recente do RU

@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     APP_GEO_SECRET: str
     GEO_SIGNATURE_MAX_SKEW_SECONDS: int = 60
 
-    QUEUE_REPORT_COOLDOWN_MINUTES: int = 3
+    QUEUE_REPORT_COOLDOWN_MINUTES: int = 2
 
     REDIS_URL: str | None = None
 

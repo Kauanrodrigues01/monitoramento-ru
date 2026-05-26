@@ -71,7 +71,7 @@
 ## 🔲 Pendente — ordenado por prioridade
 
 ### 1. Testes unitários pendentes
-- [ ] `MealPeriodService`
+- [x] `MealPeriodService`
 - [ ] `QueueReportService`
 
 ### 2. Queue Snapshots

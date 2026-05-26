@@ -14,10 +14,11 @@ INTERNAL_SERVER_ERROR_RESPONSE: dict = {
 RATE_LIMIT_RESPONSE: dict = {
     429: {
         "model": ErrorResponse,
-        "description": "Muitas requisições. Limite de 1 relato a cada 3 minutos por IP.",
+        "description": "Muitas requisições. Tente novamente em alguns instantes.",
         "content": {"application/json": {"example": {"detail": _RATE_LIMIT_DETAIL}}},
     }
 }
+
 
 
 def error_response(exc: type) -> dict:

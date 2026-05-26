@@ -73,7 +73,7 @@ async def list_restaurant_schedule_exceptions(
 
 
 @router.patch(
-    "/{restaurant_public_id}/schedule-exceptions/{restaurant_schedule_schedule_exception_public_id}",
+    "/{restaurant_public_id}/schedule-exceptions/{restaurant_schedule_exception_public_id}",
     response_model=RestaurantScheduleExceptionResponse,
     dependencies=[Depends(require_admin_api_key)],
     responses=(
@@ -87,10 +87,10 @@ async def list_restaurant_schedule_exceptions(
 )
 async def update_restaurant_schedule_exception(
     restaurant_public_id: UUID,
-    schedule_exception_public_id: UUID,
+    restaurant_schedule_exception_public_id: UUID,
     data: RestaurantScheduleExceptionUpdate,
     service: RestaurantScheduleExceptionServiceDep,
 ):
     return await service.update_restaurant_schedule_exception(
-        restaurant_public_id, schedule_exception_public_id, data
+        restaurant_public_id, restaurant_schedule_exception_public_id, data
     )

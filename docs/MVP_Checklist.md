@@ -72,7 +72,7 @@
 
 ### 1. Testes unitários pendentes
 - [x] `MealPeriodService`
-- [ ] `QueueReportService`
+- [x] `QueueReportService`
 
 ### 2. Queue Snapshots
 - [ ] Model `queue_snapshot`
@@ -111,6 +111,9 @@
 
 ## 🔭 Melhorias futuras (pós-MVP)
 
+### Refactoring
+- [ ] **Extrair `_get_restaurant_by_public_id_or_error`** — o método privado já está duplicado em `QueueReportService`, `RestaurantScheduleService` e `RestaurantScheduleExceptionService`, e será repetido em `QueueSnapshotService`. Candidato a um `RestaurantResolverMixin` ou função utilitária em `app/services/_utils.py`, recebendo `restaurant_repo` e `public_id` como parâmetros. O teste isolado em `test_get_restaurant_or_error.py` já cobre o comportamento e pode ser reaproveitado.
+
 ### Observabilidade
 - [ ] **structlog** — substituir o logger padrão por structlog para logs estruturados em JSON, facilitando ingestão em ferramentas de observabilidade
 - [ ] **Prometheus + Grafana** — expor métricas via `prometheus-fastapi-instrumentator` (`/metrics`) e criar dashboards de latência, taxa de erros e volume de relatos por RU
@@ -129,6 +132,6 @@
 |---|---|---|---|
 | Status HMAC inválido | 401 | 400 | **400 correto** — validação de payload, não autenticação |
 | Status criação report | 202 | 201 | **201 correto no MVP** — evolui para 202 com Celery |
-| Cooldown por IP | 3 min | 2 min (configurável) | Escopo atualizado para refletir implementação |
+| Cooldown por IP | 2 min | 2 min (configurável) | Alinhado |
 | Penalidade lat/lng redondo | −0.15 | −0.25 | Escopo atualizado para refletir implementação |
 | `geo_sig_valid` | Campo no banco | Removido | Campo invariante — sempre `true`, sem valor analítico |

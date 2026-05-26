@@ -36,7 +36,9 @@ class RestaurantScheduleExceptionService:
         self.repo = repo
         self.restaurant_repo = restaurant_repo
 
-    async def _get_restaurant_or_error(self, public_id: UUID) -> Restaurant:
+    async def _get_restaurant_by_public_id_or_error(
+        self, public_id: UUID
+    ) -> Restaurant:
         restaurant = await self.restaurant_repo.get_by_public_id(public_id)
         if not restaurant:
             raise RestaurantNotFoundError()
@@ -47,7 +49,9 @@ class RestaurantScheduleExceptionService:
         restaurant_public_id: UUID,
         data: RestaurantScheduleExceptionCreate,
     ) -> RestaurantScheduleException:
-        restaurant = await self._get_restaurant_or_error(restaurant_public_id)
+        restaurant = await self._get_restaurant_by_public_id_or_error(
+            restaurant_public_id
+        )
 
         existing = await self.repo.get_by_ru_id_date_and_meal_period(
             ru_id=restaurant.id,
@@ -82,7 +86,9 @@ class RestaurantScheduleExceptionService:
         restaurant_public_id: UUID,
         exception_date: date | None,
     ) -> list[RestaurantScheduleException]:
-        restaurant = await self._get_restaurant_or_error(restaurant_public_id)
+        restaurant = await self._get_restaurant_by_public_id_or_error(
+            restaurant_public_id
+        )
 
         if exception_date:
             return await self.repo.list_by_ru_id_and_date(restaurant.id, exception_date)
@@ -95,7 +101,9 @@ class RestaurantScheduleExceptionService:
         schedule_exception_public_id: UUID,
         data: RestaurantScheduleExceptionUpdate,
     ) -> RestaurantScheduleException:
-        restaurant = await self._get_restaurant_or_error(restaurant_public_id)
+        restaurant = await self._get_restaurant_by_public_id_or_error(
+            restaurant_public_id
+        )
 
         exception = await self.repo.get_by_public_id(schedule_exception_public_id)
         if not exception:

@@ -97,13 +97,71 @@
 
 ## 🔲 Pendente — ordenado por prioridade
 
-### 1. Revisões de confidence score
-- [ ] Avaliar novas penalidades após snapshot funcional
-- [ ] Implementar: IP com histórico de relatos inconsistentes
-- [ ] Implementar: Relato inconsistente com histórico recente do RU
-- [ ] Atualizar testes de service para novas penalidades
+### 1. Penalidade por divergência com o snapshot vigente (`ConfidenceScoreService`)
 
-### 2. Testes de integração
+Usar `avg_status_value` do snapshot para penalizar relatos que divergem do consenso atual:
+
+```python
+distance = abs(STATUS_MAP_VALUE[report.status] - snapshot.avg_status_value)
+if distance >= 2:     score -= 0.25   # divergência severa (ex: LARGE quando snapshot é NO_QUEUE)
+elif distance >= 1.5: score -= 0.15   # divergência moderada
+# sem penalidade se avg_status_value é null (NO_DATA ou FOOD_ENDED)
+```
+
+> O `ConfidenceScoreService` roda **antes** do recálculo de background — lê o snapshot do estado anterior ao relato, que é exatamente o consenso vigente no momento da chegada.
+
+#### Model (`app/models/queue_snapshot.py`)
+- [ ] Adicionar coluna `avg_status_value: Mapped[float | None]` — `nullable=True`, sem default
+- [ ] Adicionar `CheckConstraint("avg_status_value BETWEEN 0.0 AND 3.0 OR avg_status_value IS NULL", name="ck_avg_status_value_range")`
+- [ ] `null` quando `current_status` é `NO_DATA` ou `FOOD_ENDED` (sem valor contínuo significativo)
+
+#### Migration (Alembic)
+- [ ] Gerar migration: `alembic revision --autogenerate -m "add avg_status_value to queue_snapshots"`
+- [ ] Verificar migration gerada — confirmar tipo `FLOAT`, `nullable=True`, sem server_default
+
+#### `SnapshotStatusService` (`app/services/snapshot_status_service.py`)
+- [ ] Atualizar `_compute_status` para retornar `tuple[SnapshotStatusEnum, Decimal, float | None]` — terceiro elemento é `avg_status_value`
+  - Calcular como `total_weighted_value / total_weight` (antes do `round`) quando há scorable reports
+  - Retornar `None` nos paths de `NO_DATA` e `FOOD_ENDED`
+- [ ] Atualizar `calculate_snapshot_status` para desempacotar o terceiro elemento com `_`
+- [ ] Atualizar `update_snapshot` para desempacotar e persistir `snapshot.avg_status_value = new_avg_status_value`
+
+#### `ConfidenceScoreService` (`app/services/confidence_score_service.py`)
+- [ ] Adicionar parâmetro `snapshot: QueueSnapshot | None` ao método de cálculo (ou ao `__init__` se for stateless)
+- [ ] Implementar penalidade de distância conforme fórmula acima — skip se `snapshot` for `None` ou `snapshot.avg_status_value` for `None`
+
+#### `QueueReportService` (`app/services/queue_report_service.py`)
+- [ ] Verificar a ordem do pipeline antes de implementar — o fluxo atual é:
+  `valida geofence → calcula confidence_score → infere meal_period → persiste`
+  Para buscar o snapshot é necessário o `meal_period`. Se o confidence score é calculado **antes** da inferência do `meal_period`, reordenar para:
+  `valida geofence → infere meal_period → busca snapshot → calcula confidence_score → persiste`
+- [ ] Buscar snapshot vigente via `snapshot_repo.get_by_ru_id_and_meal_period` com `ru_id` e `meal_period` já inferido
+- [ ] Passar snapshot para `ConfidenceScoreService` no cálculo do score do novo relato
+
+#### Schemas (`app/schemas/queue_snapshot_schemas.py`)
+- `avg_status_value` **não será exposto na API** — é detalhe de implementação do cálculo; o frontend não tem uso direto para um float entre 0 e 3. O `current_status` enum já comunica o estado de forma legível. Se futuramente um dashboard admin precisar, pode ser adicionado como campo admin naquele momento. Nenhuma alteração nos schemas.
+
+#### Testes
+- [ ] `test_queue_snapshot_model` — verificar constraint `ck_avg_status_value_range`
+- [ ] `test_snapshot_status_service.py`:
+  - `_compute_status` retorna `avg_status_value` correto (valor bruto antes do round) nos paths de scorable reports
+  - `_compute_status` retorna `None` nos paths de `NO_DATA` e `FOOD_ENDED`
+  - `update_snapshot` persiste `avg_status_value` no snapshot
+- [ ] `test_confidence_score_service.py`:
+  - Penalidade `−0.25` quando distância `≥ 2`
+  - Penalidade `−0.15` quando distância `≥ 1.5`
+  - Sem penalidade quando `avg_status_value` é `None`
+  - Sem penalidade quando snapshot é `None` (estado `NO_DATA`)
+- [ ] `test_queue_report_service.py` (ou `test_create_queue_report.py`):
+  - Snapshot vigente é buscado antes do cálculo do score
+  - Snapshot é passado ao `ConfidenceScoreService`
+- [ ] Schemas: atualizar testes se `avg_status_value` for exposto na API
+
+### 2. Revisões de confidence score (demais pendências)
+- [ ] Implementar: IP com histórico de relatos inconsistentes *(requer `queue_aggregates_10m` — pós-MVP)*
+- [ ] Implementar: Relato inconsistente com histórico recente do RU *(idem)*
+
+### 3. Testes de integração
 - [ ] Endpoints de `restaurants.py`
 - [ ] Endpoints de `restaurant_schedules.py`
 - [ ] Endpoints de `restaurant_schedule_exceptions.py`

@@ -1,7 +1,6 @@
 from datetime import datetime, time
 from unittest.mock import MagicMock
 
-import pytest
 
 from app.core.utils import infer_meal_period
 from app.models.restaurant import MealPeriodEnum
@@ -33,6 +32,7 @@ def _at(h: int, m: int = 0) -> datetime:
 
 # ===== SEM SCHEDULES NEM EXCEPTIONS =====
 
+
 class TestInferMealPeriodEmpty:
     def test_returns_none_when_both_none(self):
         result = infer_meal_period(at=_at(12))
@@ -56,6 +56,7 @@ class TestInferMealPeriodEmpty:
 
 
 # ===== SCHEDULE EXCEPTIONS =====
+
 
 class TestInferMealPeriodWithExceptions:
     def test_returns_period_when_time_inside_exception_window(self):
@@ -113,7 +114,9 @@ class TestInferMealPeriodWithExceptions:
         exc_lunch = _make_exception(time(11, 0), time(14, 0), MealPeriodEnum.LUNCH)
         exc_dinner = _make_exception(time(17, 30), time(20, 0), MealPeriodEnum.DINNER)
 
-        result = infer_meal_period(at=_at(18), schedules_exceptions=[exc_lunch, exc_dinner])
+        result = infer_meal_period(
+            at=_at(18), schedules_exceptions=[exc_lunch, exc_dinner]
+        )
 
         assert result == MealPeriodEnum.DINNER
 
@@ -127,6 +130,7 @@ class TestInferMealPeriodWithExceptions:
 
 
 # ===== SCHEDULES REGULARES =====
+
 
 class TestInferMealPeriodWithSchedules:
     def test_returns_period_when_time_inside_schedule_window(self):
@@ -175,6 +179,7 @@ class TestInferMealPeriodWithSchedules:
 
 
 # ===== PRIORIDADE: EXCEPTIONS > SCHEDULES =====
+
 
 class TestExceptionsPriorityOverSchedules:
     def test_exception_match_skips_schedule_lookup(self):

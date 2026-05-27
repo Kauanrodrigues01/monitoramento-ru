@@ -15,7 +15,9 @@ class TestGetMealPeriodServiceDebugMode:
     def test_should_return_debug_meal_period_service_when_debug_is_true(self):
         session = MagicMock(spec=AsyncSession)
 
-        with patch("app.dependencies.meal_period_dependencies.settings") as mock_settings:
+        with patch(
+            "app.dependencies.meal_period_dependencies.settings"
+        ) as mock_settings:
             mock_settings.DEBUG = True
             service = get_meal_period_service(session)
 
@@ -24,7 +26,9 @@ class TestGetMealPeriodServiceDebugMode:
     def test_should_not_use_session_when_debug_is_true(self):
         session = MagicMock(spec=AsyncSession)
 
-        with patch("app.dependencies.meal_period_dependencies.settings") as mock_settings:
+        with patch(
+            "app.dependencies.meal_period_dependencies.settings"
+        ) as mock_settings:
             mock_settings.DEBUG = True
             service = get_meal_period_service(session)
 
@@ -36,7 +40,9 @@ class TestGetMealPeriodServiceProductionMode:
     def test_should_return_meal_period_service_when_debug_is_false(self):
         session = MagicMock(spec=AsyncSession)
 
-        with patch("app.dependencies.meal_period_dependencies.settings") as mock_settings:
+        with patch(
+            "app.dependencies.meal_period_dependencies.settings"
+        ) as mock_settings:
             mock_settings.DEBUG = False
             service = get_meal_period_service(session)
 
@@ -46,7 +52,9 @@ class TestGetMealPeriodServiceProductionMode:
     def test_should_inject_schedule_repository(self):
         session = MagicMock(spec=AsyncSession)
 
-        with patch("app.dependencies.meal_period_dependencies.settings") as mock_settings:
+        with patch(
+            "app.dependencies.meal_period_dependencies.settings"
+        ) as mock_settings:
             mock_settings.DEBUG = False
             service = get_meal_period_service(session)
 
@@ -55,16 +63,22 @@ class TestGetMealPeriodServiceProductionMode:
     def test_should_inject_schedule_exception_repository(self):
         session = MagicMock(spec=AsyncSession)
 
-        with patch("app.dependencies.meal_period_dependencies.settings") as mock_settings:
+        with patch(
+            "app.dependencies.meal_period_dependencies.settings"
+        ) as mock_settings:
             mock_settings.DEBUG = False
             service = get_meal_period_service(session)
 
-        assert isinstance(service.schedule_exception_repo, RestaurantScheduleExceptionRepository)
+        assert isinstance(
+            service.schedule_exception_repo, RestaurantScheduleExceptionRepository
+        )
 
     def test_should_use_same_session_for_both_repositories(self):
         session = MagicMock(spec=AsyncSession)
 
-        with patch("app.dependencies.meal_period_dependencies.settings") as mock_settings:
+        with patch(
+            "app.dependencies.meal_period_dependencies.settings"
+        ) as mock_settings:
             mock_settings.DEBUG = False
             service = get_meal_period_service(session)
 

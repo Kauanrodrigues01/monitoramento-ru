@@ -18,7 +18,9 @@ class DebugMealPeriodService(MealPeriodService):
         pass
 
     async def resolve(self, ru_id: int, at: datetime) -> MealPeriodEnum:
-        meal_period = MealPeriodEnum.LUNCH if 5 <= at.hour < 17 else MealPeriodEnum.DINNER
+        meal_period = (
+            MealPeriodEnum.LUNCH if 5 <= at.hour < 17 else MealPeriodEnum.DINNER
+        )
         logger.debug(
             "[DEBUG] ru_id=%s período resolvido por horário: %s (sem consulta ao banco)",
             ru_id,

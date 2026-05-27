@@ -21,7 +21,10 @@ from app.exceptions.queue_snapshot_exceptions import (
 )
 from app.services.queue_snapshot_service import BULK_LIMIT
 from app.exceptions.restaurant_exceptions import RestaurantNotFoundError
-from app.schemas.queue_snapshot_schemas import QueueSnapshotBulkItem, QueueSnapshotResponse
+from app.schemas.queue_snapshot_schemas import (
+    QueueSnapshotBulkItem,
+    QueueSnapshotResponse,
+)
 
 router = APIRouter(prefix="/restaurants", tags=["Queue Snapshots"])
 
@@ -29,11 +32,15 @@ router = APIRouter(prefix="/restaurants", tags=["Queue Snapshots"])
 def _parse_public_ids(ids_str: str) -> list[UUID]:
     parts = [p.strip() for p in ids_str.split(",") if p.strip()]
     if not parts:
-        raise HTTPException(status_code=422, detail="O parâmetro 'ids' não pode estar vazio.")
+        raise HTTPException(
+            status_code=422, detail="O parâmetro 'ids' não pode estar vazio."
+        )
     try:
         return [UUID(p) for p in parts]
     except ValueError:
-        raise HTTPException(status_code=422, detail="Um ou mais IDs informados são inválidos.")
+        raise HTTPException(
+            status_code=422, detail="Um ou mais IDs informados são inválidos."
+        )
 
 
 @router.get(

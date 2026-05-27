@@ -10,7 +10,7 @@ class QueueSnapshotBulkLimitExceededError(AppException):
     status_code = 400
     detail = "O número máximo de RUs por requisição em lote foi excedido."
 
-    def __init__(self) -> None: # pragma: no cover
+    def __init__(self) -> None:  # pragma: no cover
         from app.services.queue_snapshot_service import BULK_LIMIT
 
         super().__init__(

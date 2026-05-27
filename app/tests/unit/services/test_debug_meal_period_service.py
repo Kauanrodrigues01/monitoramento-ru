@@ -9,13 +9,13 @@ _RU_ID = 1
 
 # ── referências de horário ────────────────────────────────────────────────────
 
-_AT_LUNCH_MID    = datetime(2026, 5, 26, 12,  0)  # 12:00 — meio do almoço
-_AT_DINNER_MID   = datetime(2026, 5, 26, 19,  0)  # 19:00 — meio do jantar
-_AT_LUNCH_START  = datetime(2026, 5, 26,  5,  0)  # 05:00 — início exato do almoço
-_AT_LUNCH_END    = datetime(2026, 5, 26, 16, 59)  # 16:59 — último minuto do almoço
-_AT_DINNER_START = datetime(2026, 5, 26, 17,  0)  # 17:00 — início exato do jantar
-_AT_DINNER_EARLY = datetime(2026, 5, 26,  4, 59)  # 04:59 — madrugada (jantar)
-_AT_MIDNIGHT     = datetime(2026, 5, 26,  0,  0)  # 00:00 — meia-noite (jantar)
+_AT_LUNCH_MID = datetime(2026, 5, 26, 12, 0)  # 12:00 — meio do almoço
+_AT_DINNER_MID = datetime(2026, 5, 26, 19, 0)  # 19:00 — meio do jantar
+_AT_LUNCH_START = datetime(2026, 5, 26, 5, 0)  # 05:00 — início exato do almoço
+_AT_LUNCH_END = datetime(2026, 5, 26, 16, 59)  # 16:59 — último minuto do almoço
+_AT_DINNER_START = datetime(2026, 5, 26, 17, 0)  # 17:00 — início exato do jantar
+_AT_DINNER_EARLY = datetime(2026, 5, 26, 4, 59)  # 04:59 — madrugada (jantar)
+_AT_MIDNIGHT = datetime(2026, 5, 26, 0, 0)  # 00:00 — meia-noite (jantar)
 
 
 @pytest.fixture
@@ -24,6 +24,7 @@ def service() -> DebugMealPeriodService:
 
 
 # ── almoço ────────────────────────────────────────────────────────────────────
+
 
 class TestLunchPeriod:
     @pytest.mark.asyncio
@@ -46,6 +47,7 @@ class TestLunchPeriod:
 
 
 # ── jantar ────────────────────────────────────────────────────────────────────
+
 
 class TestDinnerPeriod:
     @pytest.mark.asyncio
@@ -74,6 +76,7 @@ class TestDinnerPeriod:
 
 
 # ── comportamento independente de ru_id ──────────────────────────────────────
+
 
 class TestRuIdIgnored:
     @pytest.mark.asyncio

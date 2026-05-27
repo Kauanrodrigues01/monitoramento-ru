@@ -25,7 +25,7 @@ engine = create_async_engine(
     echo=False,  # Desativa o log de SQL para evitar poluição do console
     pool_size=20,  # Tamanho do pool de conexões
     max_overflow=10,
-    pool_pre_ping=True, # Verifica a conexão antes de usá-la, útil para conexões de longa duração
+    pool_pre_ping=True,  # Verifica a conexão antes de usá-la, útil para conexões de longa duração
     pool_recycle=3600,
 )
 

@@ -127,8 +127,10 @@ class TestCreateRestaurantSnapshots:
         restaurant_data = build_restaurant_create_schema()
 
         mock_repository.get_by_name.return_value = None
+
         async def _set_id(restaurant):
             restaurant.id = 1
+
         mock_repository.create.side_effect = _set_id
         mock_repository.db_session.commit = AsyncMock()
 
@@ -147,8 +149,10 @@ class TestCreateRestaurantSnapshots:
         restaurant_data = build_restaurant_create_schema()
 
         mock_repository.get_by_name.return_value = None
+
         async def _set_id(restaurant):
             restaurant.id = 1
+
         mock_repository.create.side_effect = _set_id
         mock_repository.db_session.commit = AsyncMock()
 
@@ -165,8 +169,10 @@ class TestCreateRestaurantSnapshots:
         restaurant_data = build_restaurant_create_schema()
 
         mock_repository.get_by_name.return_value = None
+
         async def _set_id(restaurant):
             restaurant.id = 42
+
         mock_repository.create.side_effect = _set_id
         mock_repository.db_session.commit = AsyncMock()
 
@@ -198,8 +204,10 @@ class TestCreateRestaurantSnapshots:
         restaurant_data = build_restaurant_create_schema()
 
         mock_repository.get_by_name.return_value = None
+
         async def _set_id(restaurant):
             restaurant.id = 1
+
         mock_repository.create.side_effect = _set_id
         mock_snapshot_repo.create.side_effect = RuntimeError("Falha ao criar snapshot")
         mock_repository.db_session.rollback = AsyncMock()

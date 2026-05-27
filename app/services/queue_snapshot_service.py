@@ -98,7 +98,11 @@ class QueueSnapshotService:
                     ru_id=restaurant.id, at=dt
                 )
                 period_groups.setdefault(period, []).append(restaurant)
-            except (RestaurantClosedAllDayError, OutsideMealHoursError, MealPeriodClosedError):
+            except (
+                RestaurantClosedAllDayError,
+                OutsideMealHoursError,
+                MealPeriodClosedError,
+            ):
                 logger.debug(
                     "Bulk status: ru_id=%s ignorado — fora do horário de funcionamento",
                     restaurant.id,

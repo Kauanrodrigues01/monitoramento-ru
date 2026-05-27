@@ -1,7 +1,5 @@
-import math
 from decimal import Decimal
 
-import pytest
 
 from app.core.geo_utils import GeoUtils
 
@@ -65,7 +63,9 @@ class TestHaversineDistanceM:
         assert isinstance(distance, float)
 
     def test_negative_coordinates_work_correctly(self):
-        distance = GeoUtils.haversine_distance_m(-3.747360, -38.523060, -3.747360, -38.523060)
+        distance = GeoUtils.haversine_distance_m(
+            -3.747360, -38.523060, -3.747360, -38.523060
+        )
 
         assert distance == 0.0
 

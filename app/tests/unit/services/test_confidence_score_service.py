@@ -1,7 +1,6 @@
 from decimal import Decimal
 from unittest.mock import patch
 
-import pytest
 
 from app.services.confidence_score_service import (
     MIN_CONFIDENCE_SCORE,
@@ -10,15 +9,16 @@ from app.services.confidence_score_service import (
 )
 
 # Coordenadas sem arredondamento suspeito (sem trailing zeros suficientes)
-_NORMAL_LAT = Decimal("-3.747361")   # :.6f → "-3.747361" → termina em "1"
+_NORMAL_LAT = Decimal("-3.747361")  # :.6f → "-3.747361" → termina em "1"
 _NORMAL_LNG = Decimal("-38.523456")  # :.6f → "-38.523456" → termina em "56"
 
 # Coordenadas com arredondamento suspeito (3+ zeros finais no formato :.6f)
-_SUSPICIOUS_LAT = Decimal("-4.123000")   # :.6f → "-4.123000" → termina em "000"
+_SUSPICIOUS_LAT = Decimal("-4.123000")  # :.6f → "-4.123000" → termina em "000"
 _SUSPICIOUS_LNG = Decimal("-38.523456")  # normal; o lat já basta para disparar
 
 
 # ===== SEM PENALIDADES =====
+
 
 class TestCalculateConfidenceScoreNoPenalties:
     def test_returns_full_score_for_perfect_report(self):
@@ -84,6 +84,7 @@ class TestCalculateConfidenceScoreNoPenalties:
 
 # ===== PENALIDADE: LOCALIZAÇÃO SIMULADA (−0.80) =====
 
+
 class TestCalculateConfidenceScoreMockLocation:
     def test_applies_mock_location_penalty(self):
         result = ConfidenceScoreService.calculate_confidence_score(
@@ -131,6 +132,7 @@ class TestCalculateConfidenceScoreMockLocation:
 
 # ===== PENALIDADE: ACCURACY AUSENTE OU ZERO (−0.30) =====
 
+
 class TestCalculateConfidenceScoreAccuracyNoneOrZero:
     def test_applies_penalty_when_accuracy_m_is_none(self):
         result = ConfidenceScoreService.calculate_confidence_score(
@@ -156,12 +158,16 @@ class TestCalculateConfidenceScoreAccuracyNoneOrZero:
 
     def test_none_and_zero_produce_same_score(self):
         result_none = ConfidenceScoreService.calculate_confidence_score(
-            lat=_NORMAL_LAT, lng=_NORMAL_LNG,
-            is_mock_location=False, accuracy_m=None,
+            lat=_NORMAL_LAT,
+            lng=_NORMAL_LNG,
+            is_mock_location=False,
+            accuracy_m=None,
         )
         result_zero = ConfidenceScoreService.calculate_confidence_score(
-            lat=_NORMAL_LAT, lng=_NORMAL_LNG,
-            is_mock_location=False, accuracy_m=Decimal("0"),
+            lat=_NORMAL_LAT,
+            lng=_NORMAL_LNG,
+            is_mock_location=False,
+            accuracy_m=Decimal("0"),
         )
 
         assert result_none == result_zero
@@ -190,6 +196,7 @@ class TestCalculateConfidenceScoreAccuracyNoneOrZero:
 
 
 # ===== PENALIDADE: ACCURACY 20–50m (−0.15) =====
+
 
 class TestCalculateConfidenceScoreAccuracy20To50:
     def test_applies_penalty_at_lower_boundary_20(self):
@@ -246,12 +253,16 @@ class TestCalculateConfidenceScoreAccuracy20To50:
     def test_accuracy_none_zero_and_20_to_50_are_mutually_exclusive(self):
         # A condição usa elif — zero aciona accuracy_m_none_or_zero, não accuracy_m_20_to_50
         result_zero = ConfidenceScoreService.calculate_confidence_score(
-            lat=_NORMAL_LAT, lng=_NORMAL_LNG,
-            is_mock_location=False, accuracy_m=Decimal("0"),
+            lat=_NORMAL_LAT,
+            lng=_NORMAL_LNG,
+            is_mock_location=False,
+            accuracy_m=Decimal("0"),
         )
         result_small = ConfidenceScoreService.calculate_confidence_score(
-            lat=_NORMAL_LAT, lng=_NORMAL_LNG,
-            is_mock_location=False, accuracy_m=Decimal("10"),
+            lat=_NORMAL_LAT,
+            lng=_NORMAL_LNG,
+            is_mock_location=False,
+            accuracy_m=Decimal("10"),
         )
 
         # accuracy=0 aplica penalidade maior (0.30), accuracy=10 não aplica nenhuma
@@ -282,6 +293,7 @@ class TestCalculateConfidenceScoreAccuracy20To50:
 
 
 # ===== PENALIDADE: COORDENADAS SUSPEITAS (−0.25) =====
+
 
 class TestCalculateConfidenceScoreSuspiciousCoordinates:
     def test_applies_penalty_for_suspicious_lat(self):
@@ -319,7 +331,7 @@ class TestCalculateConfidenceScoreSuspiciousCoordinates:
     def test_applies_single_penalty_when_both_lat_and_lng_are_suspicious(self):
         # has_suspicious_round_coordinates usa `or` — ambas suspeitas não dobram a penalidade
         result = ConfidenceScoreService.calculate_confidence_score(
-            lat=Decimal("-4.123000"),   # suspeito
+            lat=Decimal("-4.123000"),  # suspeito
             lng=Decimal("-38.450000"),  # também suspeito
             is_mock_location=False,
             accuracy_m=Decimal("10"),
@@ -352,6 +364,7 @@ class TestCalculateConfidenceScoreSuspiciousCoordinates:
 
 
 # ===== PENALIDADES COMBINADAS =====
+
 
 class TestCalculateConfidenceScoreCombined:
     def test_mock_plus_accuracy_none(self):
@@ -446,6 +459,7 @@ class TestCalculateConfidenceScoreCombined:
 
 # ===== SEM LOGGING QUANDO NÃO HÁ PENALIDADES =====
 
+
 class TestNoLoggingWhenNoPenalties:
     def test_no_warning_and_no_debug_when_no_penalties_apply(self):
         with patch("app.services.confidence_score_service.logger") as mock_logger:
@@ -461,6 +475,7 @@ class TestNoLoggingWhenNoPenalties:
 
 
 # ===== SCORE MÍNIMO =====
+
 
 class TestCalculateConfidenceScoreMinimum:
     def test_never_returns_below_minimum(self):
@@ -501,6 +516,7 @@ class TestCalculateConfidenceScoreMinimum:
 
 
 # ===== CONSTANTES / PENALIDADES =====
+
 
 class TestPenaltiesConstants:
     def test_mock_location_penalty_value(self):

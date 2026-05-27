@@ -51,7 +51,8 @@ class MealPeriodService:
             raise RestaurantClosedAllDayError()
 
         custom_hours = [
-            e for e in schedule_exceptions
+            e
+            for e in schedule_exceptions
             if e.exception_type == ExceptionTypeEnum.CUSTOM_HOURS
         ]
         meal_period = infer_meal_period(at=at, schedules_exceptions=custom_hours)
@@ -65,11 +66,14 @@ class MealPeriodService:
             meal_period = infer_meal_period(at=at, schedules=schedules)
 
         if meal_period is None:
-            logger.debug("ru_id=%s fora do horário de funcionamento às %s", ru_id, at.time())
+            logger.debug(
+                "ru_id=%s fora do horário de funcionamento às %s", ru_id, at.time()
+            )
             raise OutsideMealHoursError()
 
         period_closed = any(
-            e.exception_type == ExceptionTypeEnum.CLOSED and e.meal_period == meal_period
+            e.exception_type == ExceptionTypeEnum.CLOSED
+            and e.meal_period == meal_period
             for e in schedule_exceptions
         )
         if period_closed:

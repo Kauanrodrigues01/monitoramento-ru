@@ -47,7 +47,9 @@ def get_restaurant_schedule_exception_service(
 ) -> RestaurantScheduleExceptionService:
     repo = RestaurantScheduleExceptionRepository(db_session=db_session)
     restaurant_repo = RestaurantRepository(db_session=db_session)
-    return RestaurantScheduleExceptionService(repo=repo, restaurant_repo=restaurant_repo)
+    return RestaurantScheduleExceptionService(
+        repo=repo, restaurant_repo=restaurant_repo
+    )
 
 
 RestaurantScheduleExceptionServiceDep = Annotated[

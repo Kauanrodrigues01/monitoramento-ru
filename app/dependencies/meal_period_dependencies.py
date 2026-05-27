@@ -16,7 +16,9 @@ def get_meal_period_service(db_session: DBSessionDep) -> MealPeriodService:
     if settings.DEBUG:
         return DebugMealPeriodService()
     schedule_repo = RestaurantScheduleRepository(db_session=db_session)
-    schedule_exception_repo = RestaurantScheduleExceptionRepository(db_session=db_session)
+    schedule_exception_repo = RestaurantScheduleExceptionRepository(
+        db_session=db_session
+    )
     return MealPeriodService(
         schedule_repo=schedule_repo,
         schedule_exception_repo=schedule_exception_repo,

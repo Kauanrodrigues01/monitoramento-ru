@@ -138,9 +138,7 @@ class QueueReportService:
 
         dt = datetime.fromtimestamp(data.geo_timestamp)
 
-        meal_period = await self.meal_period_service.resolve(
-            ru_id=restaurant.id, at=dt
-        )
+        meal_period = await self.meal_period_service.resolve(ru_id=restaurant.id, at=dt)
 
         confidence_score = ConfidenceScoreService.calculate_confidence_score(
             lat=data.lat,

@@ -72,9 +72,7 @@ class TestGetClientIpXForwardedFor:
         assert result == "10.0.0.1"
 
     def test_strips_whitespace_from_first_ip(self):
-        request = _make_request(
-            headers={"X-Forwarded-For": "  10.0.0.1 , 172.16.0.1"}
-        )
+        request = _make_request(headers={"X-Forwarded-For": "  10.0.0.1 , 172.16.0.1"})
 
         result = IpService.get_client_ip(request)
 

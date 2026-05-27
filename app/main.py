@@ -28,9 +28,7 @@ async def lifespan(_: FastAPI):
 _TAGS_METADATA = [
     {
         "name": "Restaurants",
-        "description": (
-            "Restaurantes Universitários cadastrados no sistema.\n\n"
-        ),
+        "description": ("Restaurantes Universitários cadastrados no sistema.\n\n"),
     },
     {
         "name": "Restaurant Schedules",
@@ -58,7 +56,7 @@ _TAGS_METADATA = [
             "Status atual estimado da fila para cada restaurante e período de refeição, "
             "calculado a partir dos relatórios recentes e do horário de funcionamento.\n\n"
         ),
-    }
+    },
 ]
 
 app = FastAPI(

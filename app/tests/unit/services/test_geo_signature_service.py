@@ -38,19 +38,25 @@ def _patch_settings(secret=_TEST_SECRET, max_skew=_MAX_SKEW, debug=False):
 
 class TestBuildPayload:
     def test_formats_lat_with_6_decimal_places(self):
-        payload = GeoSignatureService.build_payload(_TEST_LAT, _TEST_LNG, _TEST_ACCURACY, _NOW)
+        payload = GeoSignatureService.build_payload(
+            _TEST_LAT, _TEST_LNG, _TEST_ACCURACY, _NOW
+        )
 
         lat_part = payload.split("|")[0]
         assert lat_part == "-3.747361"
 
     def test_formats_lng_with_6_decimal_places(self):
-        payload = GeoSignatureService.build_payload(_TEST_LAT, _TEST_LNG, _TEST_ACCURACY, _NOW)
+        payload = GeoSignatureService.build_payload(
+            _TEST_LAT, _TEST_LNG, _TEST_ACCURACY, _NOW
+        )
 
         lng_part = payload.split("|")[1]
         assert lng_part == "-38.523060"
 
     def test_formats_accuracy_m_with_1_decimal_place(self):
-        payload = GeoSignatureService.build_payload(_TEST_LAT, _TEST_LNG, Decimal("12.5"), _NOW)
+        payload = GeoSignatureService.build_payload(
+            _TEST_LAT, _TEST_LNG, Decimal("12.5"), _NOW
+        )
 
         accuracy_part = payload.split("|")[2]
         assert accuracy_part == "12.5"
@@ -64,26 +70,32 @@ class TestBuildPayload:
 
     def test_accuracy_m_zero_formats_as_0_0_not_null(self):
         # Decimal("0") !== None — deve produzir "0.0", não "null"
-        payload = GeoSignatureService.build_payload(_TEST_LAT, _TEST_LNG, Decimal("0"), _NOW)
+        payload = GeoSignatureService.build_payload(
+            _TEST_LAT, _TEST_LNG, Decimal("0"), _NOW
+        )
 
         accuracy_part = payload.split("|")[2]
         assert accuracy_part == "0.0"
         assert accuracy_part != "null"
 
     def test_uses_pipe_as_separator(self):
-        payload = GeoSignatureService.build_payload(_TEST_LAT, _TEST_LNG, _TEST_ACCURACY, _NOW)
+        payload = GeoSignatureService.build_payload(
+            _TEST_LAT, _TEST_LNG, _TEST_ACCURACY, _NOW
+        )
 
         assert payload.count("|") == 3
 
     def test_format_order_is_lat_lng_accuracy_timestamp(self):
-        payload = GeoSignatureService.build_payload(_TEST_LAT, _TEST_LNG, _TEST_ACCURACY, _NOW)
+        payload = GeoSignatureService.build_payload(
+            _TEST_LAT, _TEST_LNG, _TEST_ACCURACY, _NOW
+        )
         parts = payload.split("|")
 
         assert len(parts) == 4
-        assert parts[0] == "-3.747361"    # lat
-        assert parts[1] == "-38.523060"   # lng
-        assert parts[2] == "12.5"         # accuracy
-        assert parts[3] == str(_NOW)      # timestamp
+        assert parts[0] == "-3.747361"  # lat
+        assert parts[1] == "-38.523060"  # lng
+        assert parts[2] == "12.5"  # accuracy
+        assert parts[3] == str(_NOW)  # timestamp
 
     def test_known_payload_with_accuracy(self):
         payload = GeoSignatureService.build_payload(
@@ -101,7 +113,9 @@ class TestBuildPayload:
 
     def test_accuracy_m_is_rounded_to_1_decimal(self):
         # Decimal("5.37") → :.1f → "5.4"
-        payload = GeoSignatureService.build_payload(_TEST_LAT, _TEST_LNG, Decimal("5.37"), _NOW)
+        payload = GeoSignatureService.build_payload(
+            _TEST_LAT, _TEST_LNG, Decimal("5.37"), _NOW
+        )
 
         accuracy_part = payload.split("|")[2]
         assert accuracy_part == "5.4"
@@ -114,7 +128,9 @@ class TestBuildPayload:
         assert payload.startswith("3.747361|38.523060|")
 
     def test_timestamp_included_as_integer_string(self):
-        payload = GeoSignatureService.build_payload(_TEST_LAT, _TEST_LNG, _TEST_ACCURACY, _NOW)
+        payload = GeoSignatureService.build_payload(
+            _TEST_LAT, _TEST_LNG, _TEST_ACCURACY, _NOW
+        )
 
         timestamp_part = payload.split("|")[3]
         assert timestamp_part == str(_NOW)
@@ -123,7 +139,9 @@ class TestBuildPayload:
     def test_integer_accuracy_formats_with_decimal_point(self):
         # Decimal("12") com :.1f → "12.0", nunca "12"
         # O app mobile formata da mesma forma — qualquer divergência invalida a assinatura
-        payload = GeoSignatureService.build_payload(_TEST_LAT, _TEST_LNG, Decimal("12"), _NOW)
+        payload = GeoSignatureService.build_payload(
+            _TEST_LAT, _TEST_LNG, Decimal("12"), _NOW
+        )
 
         accuracy_part = payload.split("|")[2]
         assert accuracy_part == "12.0"
@@ -202,7 +220,13 @@ class TestGenerateSignature:
 
 
 class TestValidateTimestamp:
-    def _call(self, geo_timestamp: int, now: int = _NOW, max_skew: int = _MAX_SKEW, debug: bool = False):
+    def _call(
+        self,
+        geo_timestamp: int,
+        now: int = _NOW,
+        max_skew: int = _MAX_SKEW,
+        debug: bool = False,
+    ):
         with (
             patch("time.time", return_value=now),
             patch("app.services.geo_signature_service.settings") as mock_settings,
@@ -297,7 +321,9 @@ class TestValidateTimestamp:
 
 class TestValidate:
     def _valid_signature(self, accuracy_m=_TEST_ACCURACY) -> str:
-        payload = GeoSignatureService.build_payload(_TEST_LAT, _TEST_LNG, accuracy_m, _NOW)
+        payload = GeoSignatureService.build_payload(
+            _TEST_LAT, _TEST_LNG, accuracy_m, _NOW
+        )
         return _sign(payload)
 
     def _call(
@@ -347,7 +373,9 @@ class TestValidate:
 
     def test_signature_mismatch_due_to_wrong_secret_raises(self):
         # Assina com secret errado → backend usa secret correto → mismatch
-        payload = GeoSignatureService.build_payload(_TEST_LAT, _TEST_LNG, _TEST_ACCURACY, _NOW)
+        payload = GeoSignatureService.build_payload(
+            _TEST_LAT, _TEST_LNG, _TEST_ACCURACY, _NOW
+        )
         wrong_sig = _sign(payload, secret="wrong-secret")
 
         with pytest.raises(InvalidGeoSignatureException):
@@ -412,7 +440,9 @@ class TestValidate:
 
     def test_uppercase_signature_is_rejected(self):
         # O service não normaliza maiúsculas — hmac.compare_digest é case-sensitive
-        payload = GeoSignatureService.build_payload(_TEST_LAT, _TEST_LNG, _TEST_ACCURACY, _NOW)
+        payload = GeoSignatureService.build_payload(
+            _TEST_LAT, _TEST_LNG, _TEST_ACCURACY, _NOW
+        )
         correct_sig = _sign(payload)
 
         with pytest.raises(InvalidGeoSignatureException):

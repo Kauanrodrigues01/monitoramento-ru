@@ -22,9 +22,9 @@ from app.tests.factories.restaurant_model_factory import (
 _RU_ID = 1
 
 # segunda-feira (weekday=0)
-_AT_LUNCH = datetime(2026, 5, 25, 12, 0)   # 12h — dentro do almoço (11–14h)
+_AT_LUNCH = datetime(2026, 5, 25, 12, 0)  # 12h — dentro do almoço (11–14h)
 _AT_DINNER = datetime(2026, 5, 25, 18, 30)  # 18h30 — dentro do jantar (17–20h)
-_AT_OUTSIDE = datetime(2026, 5, 25, 9, 0)   # 9h — fora de qualquer período
+_AT_OUTSIDE = datetime(2026, 5, 25, 9, 0)  # 9h — fora de qualquer período
 
 
 @pytest.fixture
@@ -46,6 +46,7 @@ def service(mock_schedule_repo, mock_exception_repo):
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
+
 
 def _lunch_schedule(**kwargs):
     return RestaurantScheduleFactory.build(
@@ -104,6 +105,7 @@ def _custom_hours(
 
 
 # ── horários regulares ────────────────────────────────────────────────────────
+
 
 class TestRegularSchedules:
     @pytest.mark.asyncio
@@ -180,6 +182,7 @@ class TestRegularSchedules:
 
 # ── custom hours ──────────────────────────────────────────────────────────────
 
+
 class TestCustomHours:
     @pytest.mark.asyncio
     async def test_should_resolve_lunch_via_custom_hours(
@@ -232,7 +235,9 @@ class TestCustomHours:
     async def test_should_skip_custom_hours_with_none_opens_at(
         self, service, mock_schedule_repo, mock_exception_repo
     ):
-        custom = _custom_hours(MealPeriodEnum.LUNCH, opens_at=None, closes_at=time(14, 0))
+        custom = _custom_hours(
+            MealPeriodEnum.LUNCH, opens_at=None, closes_at=time(14, 0)
+        )
         mock_exception_repo.list_by_ru_id_and_date.return_value = [custom]
         mock_schedule_repo.list_by_ru_id_and_weekday.return_value = [_lunch_schedule()]
 
@@ -245,7 +250,9 @@ class TestCustomHours:
     async def test_should_skip_custom_hours_with_none_closes_at(
         self, service, mock_schedule_repo, mock_exception_repo
     ):
-        custom = _custom_hours(MealPeriodEnum.LUNCH, opens_at=time(10, 0), closes_at=None)
+        custom = _custom_hours(
+            MealPeriodEnum.LUNCH, opens_at=time(10, 0), closes_at=None
+        )
         mock_exception_repo.list_by_ru_id_and_date.return_value = [custom]
         mock_schedule_repo.list_by_ru_id_and_weekday.return_value = [_lunch_schedule()]
 
@@ -313,6 +320,7 @@ class TestCustomHours:
 
 # ── restaurante fechado o dia todo ────────────────────────────────────────────
 
+
 class TestRestaurantClosedAllDay:
     @pytest.mark.asyncio
     async def test_should_raise_when_whole_day_closed_exception_exists(
@@ -362,6 +370,7 @@ class TestRestaurantClosedAllDay:
 
 # ── fora do horário de funcionamento ─────────────────────────────────────────
 
+
 class TestOutsideMealHours:
     @pytest.mark.asyncio
     async def test_should_raise_when_no_exceptions_and_no_schedules(
@@ -407,6 +416,7 @@ class TestOutsideMealHours:
 
 
 # ── período de refeição fechado ───────────────────────────────────────────────
+
 
 class TestMealPeriodClosed:
     @pytest.mark.asyncio
@@ -470,6 +480,7 @@ class TestMealPeriodClosed:
 
 
 # ── chamadas ao repositório ───────────────────────────────────────────────────
+
 
 class TestRepositoryCalls:
     @pytest.mark.asyncio

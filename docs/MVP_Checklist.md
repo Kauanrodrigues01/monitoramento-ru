@@ -44,8 +44,9 @@
 - [x] `accuracy_m` entre 20m e 50m → −0.15
 - [x] Coordenadas com precisão suspeita (lat/lng redondos) → −0.25
 - [x] Score mínimo: 0.05 (floor)
-- [ ] IP com histórico de relatos inconsistentes *(pendente — requer dados históricos)*
-- [ ] Relato inconsistente com histórico recente do RU *(pendente — requer snapshot funcional)*
+- [ ] Divergência com snapshot vigente *(seção 1 do pendente)*
+- [ ] IP com histórico de relatos inconsistentes *(pós-MVP — requer `queue_aggregates_10m`)*
+- [ ] Relato inconsistente com histórico recente do RU *(pós-MVP — idem)*
 
 ### Rate Limit (slowapi)
 - [x] Aplicado a todos os endpoints da aplicação
@@ -113,86 +114,84 @@ elif distance >= 1.5: score -= 0.15   # divergência moderada
 #### Model (`app/models/queue_snapshot.py`)
 - [ ] Adicionar coluna `avg_status_value: Mapped[float | None]` — `nullable=True`, sem default
 - [ ] Adicionar `CheckConstraint("avg_status_value BETWEEN 0.0 AND 3.0 OR avg_status_value IS NULL", name="ck_avg_status_value_range")`
-- [ ] `null` quando `current_status` é `NO_DATA` ou `FOOD_ENDED` (sem valor contínuo significativo)
+- [ ] `null` quando `current_status` é `NO_DATA` ou `FOOD_ENDED`
 
 #### Migration (Alembic)
 - [ ] Gerar migration: `alembic revision --autogenerate -m "add avg_status_value to queue_snapshots"`
 - [ ] Verificar migration gerada — confirmar tipo `FLOAT`, `nullable=True`, sem server_default
 
 #### `SnapshotStatusService` (`app/services/snapshot_status_service.py`)
-- [ ] Atualizar `_compute_status` para retornar `tuple[SnapshotStatusEnum, Decimal, float | None]` — terceiro elemento é `avg_status_value`
-  - Calcular como `total_weighted_value / total_weight` (antes do `round`) quando há scorable reports
-  - Retornar `None` nos paths de `NO_DATA` e `FOOD_ENDED`
+- [ ] Atualizar `_compute_status` para retornar `tuple[SnapshotStatusEnum, Decimal, float | None]`
+  - `avg_status_value` = `total_weighted_value / total_weight` (antes do `round`) quando há scorable reports
+  - `None` nos paths de `NO_DATA` e `FOOD_ENDED`
 - [ ] Atualizar `calculate_snapshot_status` para desempacotar o terceiro elemento com `_`
-- [ ] Atualizar `update_snapshot` para desempacotar e persistir `snapshot.avg_status_value = new_avg_status_value`
+- [ ] Atualizar `update_snapshot` para persistir `snapshot.avg_status_value = new_avg_status_value`
 
 #### `ConfidenceScoreService` (`app/services/confidence_score_service.py`)
-- [ ] Adicionar parâmetro `snapshot: QueueSnapshot | None` ao método de cálculo (ou ao `__init__` se for stateless)
-- [ ] Implementar penalidade de distância conforme fórmula acima — skip se `snapshot` for `None` ou `snapshot.avg_status_value` for `None`
+- [ ] Adicionar parâmetro `snapshot: QueueSnapshot | None` ao método de cálculo
+- [ ] Implementar penalidade de distância — skip se `snapshot` for `None` ou `snapshot.avg_status_value` for `None`
 
 #### `QueueReportService` (`app/services/queue_report_service.py`)
-- [ ] Verificar a ordem do pipeline antes de implementar — o fluxo atual é:
-  `valida geofence → calcula confidence_score → infere meal_period → persiste`
-  Para buscar o snapshot é necessário o `meal_period`. Se o confidence score é calculado **antes** da inferência do `meal_period`, reordenar para:
+- [ ] Verificar ordem do pipeline — `meal_period` deve ser inferido **antes** do cálculo do confidence score para que o snapshot possa ser buscado. Reordenar se necessário:
   `valida geofence → infere meal_period → busca snapshot → calcula confidence_score → persiste`
-- [ ] Buscar snapshot vigente via `snapshot_repo.get_by_ru_id_and_meal_period` com `ru_id` e `meal_period` já inferido
-- [ ] Passar snapshot para `ConfidenceScoreService` no cálculo do score do novo relato
+- [ ] Buscar snapshot via `snapshot_repo.get_by_ru_id_and_meal_period` após inferir `meal_period`
+- [ ] Passar snapshot para `ConfidenceScoreService`
 
-#### Schemas (`app/schemas/queue_snapshot_schemas.py`)
-- `avg_status_value` **não será exposto na API** — é detalhe de implementação do cálculo; o frontend não tem uso direto para um float entre 0 e 3. O `current_status` enum já comunica o estado de forma legível. Se futuramente um dashboard admin precisar, pode ser adicionado como campo admin naquele momento. Nenhuma alteração nos schemas.
+#### Schemas
+- `avg_status_value` **não será exposto na API** — detalhe de implementação interno. Nenhuma alteração nos schemas.
 
 #### Testes
 - [ ] `test_queue_snapshot_model` — verificar constraint `ck_avg_status_value_range`
 - [ ] `test_snapshot_status_service.py`:
-  - `_compute_status` retorna `avg_status_value` correto (valor bruto antes do round) nos paths de scorable reports
+  - `_compute_status` retorna `avg_status_value` correto (bruto, antes do `round`) com scorable reports
   - `_compute_status` retorna `None` nos paths de `NO_DATA` e `FOOD_ENDED`
-  - `update_snapshot` persiste `avg_status_value` no snapshot
+  - `update_snapshot` persiste `avg_status_value`
 - [ ] `test_confidence_score_service.py`:
   - Penalidade `−0.25` quando distância `≥ 2`
   - Penalidade `−0.15` quando distância `≥ 1.5`
   - Sem penalidade quando `avg_status_value` é `None`
-  - Sem penalidade quando snapshot é `None` (estado `NO_DATA`)
-- [ ] `test_queue_report_service.py` (ou `test_create_queue_report.py`):
-  - Snapshot vigente é buscado antes do cálculo do score
+  - Sem penalidade quando snapshot é `None`
+- [ ] `test_queue_report_service.py`:
+  - Snapshot é buscado após inferência do `meal_period`
   - Snapshot é passado ao `ConfidenceScoreService`
-- [ ] Schemas: atualizar testes se `avg_status_value` for exposto na API
 
-### 2. Revisões de confidence score (demais pendências)
-- [ ] Implementar: IP com histórico de relatos inconsistentes *(requer `queue_aggregates_10m` — pós-MVP)*
-- [ ] Implementar: Relato inconsistente com histórico recente do RU *(idem)*
-
-### 3. Testes de integração
+### 2. Testes de integração
 - [ ] Endpoints de `restaurants.py`
 - [ ] Endpoints de `restaurant_schedules.py`
 - [ ] Endpoints de `restaurant_schedule_exceptions.py`
 - [ ] Endpoints de `queue_reports.py`
 - [ ] Endpoints de `queue_snapshots.py`
 
+### 3. Refactoring
+- [ ] **Extrair `_get_restaurant_by_public_id_or_error`** — método privado duplicado em `QueueReportService`, `RestaurantScheduleService`, `RestaurantScheduleExceptionService` e `QueueSnapshotService`. Candidato a `RestaurantResolverMixin` ou função utilitária em `app/services/_utils.py`. Teste isolado em `test_get_restaurant_or_error.py` já cobre o comportamento.
+- [ ] Atualizar testes necessários após refatoração
+
 ---
 
 ## 🔭 Melhorias futuras (pós-MVP)
 
-### Refactoring
-- [ ] **Extrair `_get_restaurant_by_public_id_or_error`** — método privado duplicado em `QueueReportService`, `RestaurantScheduleService`, `RestaurantScheduleExceptionService` e `QueueSnapshotService`. Candidato a `RestaurantResolverMixin` ou função utilitária em `app/services/_utils.py`. Teste isolado em `test_get_restaurant_or_error.py` já cobre o comportamento e pode ser reaproveitado.
-
 ### Processamento assíncrono
-- [ ] **Celery + Redis Broker** — substituir Background Tasks do FastAPI por Celery para o recálculo do snapshot. Retorno do `POST /reports` passa de `201` para `202 Accepted`
+- [ ] **Celery + Redis Broker** — substituir Background Tasks do FastAPI por Celery para recálculo do snapshot. Retorno do `POST /reports` passa de `201` para `202 Accepted`
 - [ ] **sqlalchemy-celery-beat** — scheduler dinâmico com schedules persistidos no PostgreSQL
 - [ ] **`close_meal_period_task`** — disparada pelo beat no `closes_at` de cada slot: encerra o período, reseta snapshot para `NO_DATA`, invalida Redis, publica evento WebSocket
 - [ ] **`aggregate_meal_period_task`** — enfileirada por `close_meal_period_task` quando o período teve relatos: processa buckets fixos de 10 min e grava em `queue_aggregates_10m`
-- [ ] **`FOOD_ENDED` override via Redis** — substituir a remoção implícita por janela (comportamento atual) por TTL explícito no Redis: `min(30 min, tempo restante até closes_at)`. Garante expiração precisa independente de novos relatos chegarem
+- [ ] **`FOOD_ENDED` override via Redis** — substituir remoção implícita por TTL explícito: `min(30 min, tempo restante até closes_at)`. Garante expiração precisa independente de novos relatos chegarem
 - [ ] **Job 2 — Cache semanal** — CrontabSchedule aos domingos: lê `queue_aggregates_10m`, aplica `normalize_for_query`, salva no Redis (`analytics:ru:{id}:weekly`, TTL 7 dias)
 - [ ] **Job 3 — Limpeza de dados** — CrontabSchedule às segundas: aplica política de retenção (90 dias para `queue_reports`, 365 dias para `queue_aggregates_10m` e `admin_audit_log`)
 
+### Confidence score — penalidades históricas
+- [ ] **IP com histórico inconsistente** — requer `queue_aggregates_10m` populado com histórico suficiente
+- [ ] **Relato inconsistente com histórico recente do RU** — idem
+
 ### Observabilidade
-- [ ] **structlog** — substituir o logger padrão por structlog para logs estruturados em JSON
-- [ ] **Prometheus + Grafana** — expor métricas via `prometheus-fastapi-instrumentator` (`/metrics`) e criar dashboards de latência, taxa de erros e volume de relatos por RU
+- [ ] **structlog** — substituir logger padrão por structlog para logs estruturados em JSON
+- [ ] **Prometheus + Grafana** — expor métricas via `prometheus-fastapi-instrumentator` (`/metrics`)
 
 ### Resiliência
-- [ ] **Timeouts em cascata** — configurar `statement_timeout` no PostgreSQL, `socket_timeout` no Redis, `httpx.Timeout` para clientes externos e `--timeout-keep-alive` no uvicorn
+- [ ] **Timeouts em cascata** — `statement_timeout` no PostgreSQL, `socket_timeout` no Redis, `httpx.Timeout` para clientes externos, `--timeout-keep-alive` no uvicorn
 
 ### Segurança
-- [ ] **HTTP Security Headers** — adicionar middleware com `Strict-Transport-Security`, `X-Frame-Options` e `X-Content-Type-Options`
+- [ ] **HTTP Security Headers** — `Strict-Transport-Security`, `X-Frame-Options`, `X-Content-Type-Options`
 
 ---
 
@@ -206,4 +205,4 @@ elif distance >= 1.5: score -= 0.15   # divergência moderada
 | Penalidade lat/lng redondo | −0.15 | −0.25 | Escopo atualizado para refletir implementação |
 | `geo_sig_valid` | Campo no banco | Removido | Campo invariante — sempre `true`, sem valor analítico |
 | Recálculo snapshot | Celery task | Background Tasks FastAPI | Bridge para MVP — evolui para Celery na fase de processamento assíncrono |
-| Expiração `FOOD_ENDED` | TTL Redis explícito | Remoção implícita por janela de 5 min | Sem Redis no MVP — expira quando ≥3 relatos FOOD_ENDED saem da janela e chega novo relato. Evolui para TTL Redis com Celery |
+| Expiração `FOOD_ENDED` | TTL Redis explícito | Remoção implícita por janela de 5 min | Sem Redis no MVP — expira quando ≥3 relatos FOOD_ENDED saem da janela e chega novo relato |

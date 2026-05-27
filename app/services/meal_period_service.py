@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from app.core.logging import get_logger
 from app.core.utils import infer_meal_period
 from app.exceptions.meal_period_exceptions import (
     MealPeriodClosedError,
@@ -11,6 +12,9 @@ from app.repositories.restaurant_schedule_exception_repository import (
     RestaurantScheduleExceptionRepository,
 )
 from app.repositories.restaurant_schedule_repository import RestaurantScheduleRepository
+
+
+logger = get_logger(__name__)
 
 
 class MealPeriodService:
@@ -43,6 +47,7 @@ class MealPeriodService:
             for e in schedule_exceptions
         )
         if whole_day_closed:
+            logger.debug("ru_id=%s fechado o dia todo em %s", ru_id, at.date())
             raise RestaurantClosedAllDayError()
 
         custom_hours = [
@@ -60,6 +65,7 @@ class MealPeriodService:
             meal_period = infer_meal_period(at=at, schedules=schedules)
 
         if meal_period is None:
+            logger.debug("ru_id=%s fora do horário de funcionamento às %s", ru_id, at.time())
             raise OutsideMealHoursError()
 
         period_closed = any(
@@ -67,6 +73,13 @@ class MealPeriodService:
             for e in schedule_exceptions
         )
         if period_closed:
+            logger.debug(
+                "ru_id=%s período %s fechado por exceção em %s",
+                ru_id,
+                meal_period.value,
+                at.date(),
+            )
             raise MealPeriodClosedError()
 
+        logger.debug("ru_id=%s período resolvido: %s", ru_id, meal_period.value)
         return meal_period

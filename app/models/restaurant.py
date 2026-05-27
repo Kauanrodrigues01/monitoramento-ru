@@ -4,7 +4,7 @@ from enum import Enum
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-if TYPE_CHECKING:
+if TYPE_CHECKING: # pragma: no cover
     from app.models.queue_reports import QueueReport
     from app.models.queue_snapshot import QueueSnapshot
 

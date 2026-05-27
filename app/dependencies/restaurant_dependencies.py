@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import Depends
 
 from app.dependencies.database import DBSessionDep
+from app.repositories.queue_snapshot_repository import QueueSnapshotRepository
 from app.repositories.restaurant_repository import RestaurantRepository
 from app.repositories.restaurant_schedule_exception_repository import (
     RestaurantScheduleExceptionRepository,
@@ -17,7 +18,8 @@ from app.services.restaurant_service import RestaurantService
 
 def get_restaurant_service(db_session: DBSessionDep) -> RestaurantService:
     repo = RestaurantRepository(db_session=db_session)
-    return RestaurantService(repo=repo)
+    snapshot_repo = QueueSnapshotRepository(db_session=db_session)
+    return RestaurantService(repo=repo, snapshot_repo=snapshot_repo)
 
 
 RestaurantServiceDep = Annotated[

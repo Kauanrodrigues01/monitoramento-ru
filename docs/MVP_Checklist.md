@@ -77,8 +77,8 @@
 - [x] Schemas, repository, service
 - [x] Endpoint: `GET /v1/restaurants/{public_id}/status`
 - [x] Endpoint: `GET /v1/restaurants/status/bulk?ids=uuid1,uuid2,...` (bulk)
-- [ ] Possivelmente: criação automática dos snapshots junto com o restaurant (`POST /restaurants`)
-- [ ] Testes de schemas
+- [x] Possivelmente: criação automática dos snapshots junto com o restaurant (`POST /restaurants`)
+- [x] Testes de schemas
 - [ ] Testes de service
 - [ ] Testes de integração dos endpoints
 

@@ -1,6 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
+from app.core.logging import get_logger
 from app.exceptions.meal_period_exceptions import (
     MealPeriodClosedError,
     OutsideMealHoursError,
@@ -17,6 +18,8 @@ from app.repositories.queue_snapshot_repository import QueueSnapshotRepository
 from app.repositories.restaurant_repository import RestaurantRepository
 from app.schemas.queue_snapshot_schemas import QueueSnapshotBulkItem
 from app.services.meal_period_service import MealPeriodService
+
+logger = get_logger(__name__)
 
 BULK_LIMIT = 10
 
@@ -38,6 +41,7 @@ class QueueSnapshotService:
         restaurant = await self.restaurant_repo.get_by_public_id(public_id)
 
         if not restaurant:
+            logger.warning("Restaurante não encontrado: %s", public_id)
             raise RestaurantNotFoundError()
 
         return restaurant
@@ -56,6 +60,11 @@ class QueueSnapshotService:
         )
 
         if not snapshot:
+            logger.warning(
+                "Snapshot não encontrado: ru_id=%s, meal_period=%s",
+                restaurant.id,
+                meal_period.value,
+            )
             raise QueueSnapshotNotFoundError()
 
         return snapshot
@@ -64,10 +73,19 @@ class QueueSnapshotService:
         self, public_ids: list[UUID]
     ) -> list[QueueSnapshotBulkItem]:
         if len(public_ids) > BULK_LIMIT:
+            logger.warning(
+                "Limite de bulk excedido: %d IDs solicitados (máximo %d)",
+                len(public_ids),
+                BULK_LIMIT,
+            )
             raise QueueSnapshotBulkLimitExceededError()
 
         restaurants = await self.restaurant_repo.get_bulk_by_public_ids(public_ids)
         if not restaurants:
+            logger.warning(
+                "Bulk status: nenhum restaurante ativo encontrado para os %d IDs informados",
+                len(public_ids),
+            )
             return []
 
         dt = datetime.now()
@@ -81,6 +99,10 @@ class QueueSnapshotService:
                 )
                 period_groups.setdefault(period, []).append(restaurant)
             except (RestaurantClosedAllDayError, OutsideMealHoursError, MealPeriodClosedError):
+                logger.debug(
+                    "Bulk status: ru_id=%s ignorado — fora do horário de funcionamento",
+                    restaurant.id,
+                )
                 continue
 
         if not period_groups:

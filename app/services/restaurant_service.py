@@ -7,7 +7,9 @@ from app.exceptions.restaurant_exceptions import (
     RestaurantAlreadyExistsError,
     RestaurantNotFoundError,
 )
-from app.models.restaurant import Restaurant
+from app.models.queue_snapshot import QueueSnapshot, SnapshotStatusEnum
+from app.models.restaurant import MealPeriodEnum, Restaurant
+from app.repositories.queue_snapshot_repository import QueueSnapshotRepository
 from app.repositories.restaurant_repository import RestaurantRepository
 from app.schemas.restaurant_schemas import RestaurantCreate, RestaurantUpdate
 
@@ -15,8 +17,13 @@ logger = get_logger(__name__)
 
 
 class RestaurantService:
-    def __init__(self, repo: RestaurantRepository):
+    def __init__(
+        self,
+        repo: RestaurantRepository,
+        snapshot_repo: QueueSnapshotRepository,
+    ):
         self.repo = repo
+        self.snapshot_repo = snapshot_repo
 
     async def create_restaurant(self, restaurant_data: RestaurantCreate) -> Restaurant:
         existing = await self.repo.get_by_name(restaurant_data.name)
@@ -29,6 +36,16 @@ class RestaurantService:
         try:
             restaurant = Restaurant(**restaurant_data.model_dump())
             await self.repo.create(restaurant)
+
+            for meal_period in (MealPeriodEnum.LUNCH, MealPeriodEnum.DINNER):
+                await self.snapshot_repo.create(
+                    QueueSnapshot(
+                        ru_id=restaurant.id,
+                        meal_period=meal_period,
+                        current_status=SnapshotStatusEnum.NO_DATA,
+                    )
+                )
+
             await self.repo.db_session.commit()
             logger.info(
                 "Restaurante criado: %s (campus: %s)",

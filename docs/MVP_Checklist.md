@@ -54,15 +54,20 @@
 
 | Operação | Limite |
 |---|---|
-| `GET` (todos os endpoints) | 60 req/min por IP |
 | `POST /restaurants` | 10 req/min por IP |
+| `GET /restaurants` | 60 req/min por IP |
+| `GET /restaurants/{id}` | 60 req/min por IP |
 | `PATCH /restaurants/{id}` | 10 req/min por IP |
 | `POST /restaurants/{id}/schedules` | 20 req/min por IP |
-| `PATCH /restaurants/{id}/schedules/{id}` | 20 req/min por IP |
+| `GET /restaurants/{id}/schedules` | 60 req/min por IP |
+| `PATCH /restaurants/{id}/schedules/{sid}` | 20 req/min por IP |
 | `POST /restaurants/{id}/schedule-exceptions` | 5 req/min por IP |
-| `PATCH /restaurants/{id}/schedule-exceptions/{id}` | 10 req/min por IP |
+| `GET /restaurants/{id}/schedule-exceptions` | 60 req/min por IP |
+| `PATCH /restaurants/{id}/schedule-exceptions/{eid}` | 10 req/min por IP |
 | `POST /restaurants/{id}/reports` | 20 req/min por IP (DoS bruto; cooldown real no service) |
 | `GET /restaurants/{id}/reports/recent` | 60 req/min por IP |
+| `GET /restaurants/status/bulk` | 20 req/min por IP |
+| `GET /restaurants/{id}/status` | 60 req/min por IP |
 
 ### Queue Snapshots
 - [x] Model `queue_snapshot`

@@ -7,6 +7,7 @@ from app.dependencies.restaurant_dependencies import (
     get_restaurant_schedule_service,
     get_restaurant_service,
 )
+from app.repositories.queue_snapshot_repository import QueueSnapshotRepository
 from app.repositories.restaurant_repository import RestaurantRepository
 from app.repositories.restaurant_schedule_exception_repository import (
     RestaurantScheduleExceptionRepository,
@@ -40,6 +41,20 @@ class TestGetRestaurantService:
         service = get_restaurant_service(session)
 
         assert service.repo.db_session is session
+
+    def test_should_inject_snapshot_repository(self):
+        session = MagicMock(spec=AsyncSession)
+
+        service = get_restaurant_service(session)
+
+        assert isinstance(service.snapshot_repo, QueueSnapshotRepository)
+
+    def test_should_use_provided_session_in_snapshot_repository(self):
+        session = MagicMock(spec=AsyncSession)
+
+        service = get_restaurant_service(session)
+
+        assert service.snapshot_repo.db_session is session
 
 
 class TestGetRestaurantScheduleService:

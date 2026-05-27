@@ -8,7 +8,9 @@ from app.exceptions.restaurant_exceptions import (
     RestaurantAlreadyExistsError,
     RestaurantNotFoundError,
 )
-from app.models.restaurant import CampusEnum
+from app.models.queue_snapshot import SnapshotStatusEnum
+from app.models.restaurant import CampusEnum, MealPeriodEnum
+from app.repositories.queue_snapshot_repository import QueueSnapshotRepository
 from app.repositories.restaurant_repository import RestaurantRepository
 from app.services.restaurant_service import RestaurantService
 from app.tests.factories.restaurant_model_factory import RestaurantFactory
@@ -27,9 +29,14 @@ def mock_repository():
 
 
 @pytest.fixture
-def service(mock_repository):
-    """Cria a service com repositório mockado"""
-    return RestaurantService(repo=mock_repository)
+def mock_snapshot_repo():
+    return AsyncMock(spec=QueueSnapshotRepository)
+
+
+@pytest.fixture
+def service(mock_repository, mock_snapshot_repo):
+    """Cria a service com repositórios mockados"""
+    return RestaurantService(repo=mock_repository, snapshot_repo=mock_snapshot_repo)
 
 
 # ===== CREATE RESTAURANT =====
@@ -108,6 +115,101 @@ class TestCreateRestaurant:
             await service.create_restaurant(restaurant_data)
 
         mock_repository.db_session.rollback.assert_called_once()
+
+
+# ===== CREATE RESTAURANT — SNAPSHOTS =====
+class TestCreateRestaurantSnapshots:
+    @pytest.mark.asyncio
+    async def test_should_create_snapshot_for_each_meal_period(
+        self, service, mock_repository, mock_snapshot_repo
+    ):
+        """Deve criar um snapshot para LUNCH e outro para DINNER"""
+        restaurant_data = build_restaurant_create_schema()
+
+        mock_repository.get_by_name.return_value = None
+        async def _set_id(restaurant):
+            restaurant.id = 1
+        mock_repository.create.side_effect = _set_id
+        mock_repository.db_session.commit = AsyncMock()
+
+        await service.create_restaurant(restaurant_data)
+
+        assert mock_snapshot_repo.create.call_count == 2
+        snapshots = [call.args[0] for call in mock_snapshot_repo.create.call_args_list]
+        periods = {s.meal_period for s in snapshots}
+        assert periods == {MealPeriodEnum.LUNCH, MealPeriodEnum.DINNER}
+
+    @pytest.mark.asyncio
+    async def test_should_create_snapshots_with_no_data_status(
+        self, service, mock_repository, mock_snapshot_repo
+    ):
+        """Deve criar snapshots com status NO_DATA"""
+        restaurant_data = build_restaurant_create_schema()
+
+        mock_repository.get_by_name.return_value = None
+        async def _set_id(restaurant):
+            restaurant.id = 1
+        mock_repository.create.side_effect = _set_id
+        mock_repository.db_session.commit = AsyncMock()
+
+        await service.create_restaurant(restaurant_data)
+
+        snapshots = [call.args[0] for call in mock_snapshot_repo.create.call_args_list]
+        assert all(s.current_status == SnapshotStatusEnum.NO_DATA for s in snapshots)
+
+    @pytest.mark.asyncio
+    async def test_should_create_snapshots_with_correct_ru_id(
+        self, service, mock_repository, mock_snapshot_repo
+    ):
+        """Deve criar snapshots com o ru_id do restaurante recém-criado"""
+        restaurant_data = build_restaurant_create_schema()
+
+        mock_repository.get_by_name.return_value = None
+        async def _set_id(restaurant):
+            restaurant.id = 42
+        mock_repository.create.side_effect = _set_id
+        mock_repository.db_session.commit = AsyncMock()
+
+        await service.create_restaurant(restaurant_data)
+
+        snapshots = [call.args[0] for call in mock_snapshot_repo.create.call_args_list]
+        assert all(s.ru_id == 42 for s in snapshots)
+
+    @pytest.mark.asyncio
+    async def test_should_not_create_snapshots_when_restaurant_already_exists(
+        self, service, mock_repository, mock_snapshot_repo
+    ):
+        """Não deve criar snapshots quando o restaurante já existe"""
+        restaurant_data = build_restaurant_create_schema()
+        mock_repository.get_by_name.return_value = RestaurantFactory.build(
+            name=restaurant_data.name
+        )
+
+        with pytest.raises(RestaurantAlreadyExistsError):
+            await service.create_restaurant(restaurant_data)
+
+        mock_snapshot_repo.create.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_should_rollback_when_snapshot_creation_fails(
+        self, service, mock_repository, mock_snapshot_repo
+    ):
+        """Deve fazer rollback quando a criação de snapshot falhar"""
+        restaurant_data = build_restaurant_create_schema()
+
+        mock_repository.get_by_name.return_value = None
+        async def _set_id(restaurant):
+            restaurant.id = 1
+        mock_repository.create.side_effect = _set_id
+        mock_snapshot_repo.create.side_effect = RuntimeError("Falha ao criar snapshot")
+        mock_repository.db_session.rollback = AsyncMock()
+        mock_repository.db_session.commit = AsyncMock()
+
+        with pytest.raises(RuntimeError):
+            await service.create_restaurant(restaurant_data)
+
+        mock_repository.db_session.rollback.assert_called_once()
+        mock_repository.db_session.commit.assert_not_called()
 
 
 # ===== LIST RESTAURANTS =====

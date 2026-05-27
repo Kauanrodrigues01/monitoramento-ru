@@ -48,3 +48,15 @@ Isso significa que `GET /restaurants/{id}/status` e `POST /restaurants/{id}/repo
 
 Arquivo: `app/services/debug_meal_period_service.py`  
 Injetado em: `app/dependencies/meal_period_dependencies.py`
+
+---
+
+### 4. Validação de geofence ignorada
+
+Em produção, o relato é rejeitado com `400` se a distância entre as coordenadas enviadas e o restaurante exceder `geofence_radius_m`.
+
+Com `DEBUG=True`, a distância ainda é calculada (e logada em `DEBUG`), mas a exceção `QueueReportLocationOutOfGeofenceError` nunca é levantada — o relato passa independente da distância.
+
+Útil para testar envios a partir de máquinas fora do campus sem precisar falsificar coordenadas.
+
+Arquivo: `app/services/queue_report_service.py`

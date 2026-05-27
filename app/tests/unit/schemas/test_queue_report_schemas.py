@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
 from uuid import uuid4
@@ -19,7 +19,7 @@ def _build_report_response_payload(**kwargs) -> dict:
         "public_id": uuid4(),
         "status": ReportStatusEnum.SMALL,
         "meal_period": MealPeriodEnum.LUNCH,
-        "created_at": datetime.now(),
+        "created_at": datetime.now(UTC),
     }
     data.update(kwargs)
     return data

@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from unittest.mock import patch
 from uuid import uuid4
@@ -114,7 +114,8 @@ class TestCreateQueueReport_HappyPath:
                 restaurant.public_id, valid_payload, _IP, background_tasks
             )
 
-        expected_at = datetime.fromtimestamp(_GEO_TIMESTAMP)
+        from app.core.datetime_utils import to_app_tz
+        expected_at = to_app_tz(datetime.fromtimestamp(_GEO_TIMESTAMP, tz=UTC))
         mock_meal_period_service.resolve.assert_called_once_with(
             ru_id=restaurant.id,
             at=expected_at,
@@ -605,9 +606,10 @@ class TestCreateQueueReport_MealPeriod:
                 restaurant.public_id, valid_payload, _IP, background_tasks
             )
 
+        from app.core.datetime_utils import to_app_tz
         mock_meal_period_service.resolve.assert_called_once_with(
             ru_id=restaurant.id,
-            at=datetime.fromtimestamp(_GEO_TIMESTAMP),
+            at=to_app_tz(datetime.fromtimestamp(_GEO_TIMESTAMP, tz=UTC)),
         )
 
     async def test_invalid_hours_does_not_check_geofence(
@@ -713,7 +715,9 @@ class TestCreateQueueReport_Geofence:
                 _PATCH_HAVERSINE, return_value=float(restaurant.geofence_radius_m) + 1
             ),
             patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
+            patch(_PATCH_SETTINGS) as mock_settings,
         ):
+            mock_settings.DEBUG = False
             with pytest.raises(QueueReportLocationOutOfGeofenceError):
                 await service.create_queue_report(
                     restaurant.public_id, valid_payload, _IP, background_tasks
@@ -748,6 +752,36 @@ class TestCreateQueueReport_Geofence:
             lat2=float(restaurant.lat),
             lng2=float(restaurant.lng),
         )
+
+    async def test_location_outside_geofence_passes_when_debug_true(
+        self,
+        service,
+        mock_repo,
+        mock_restaurant_repo,
+        mock_meal_period_service,
+        restaurant,
+        valid_payload,
+        background_tasks,
+    ):
+        _setup_full_happy_path(
+            mock_repo, mock_restaurant_repo, mock_meal_period_service, restaurant
+        )
+
+        with (
+            patch(_PATCH_GEO_SIG),
+            patch(
+                _PATCH_HAVERSINE, return_value=float(restaurant.geofence_radius_m) + 9999
+            ),
+            patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
+            patch(_PATCH_SETTINGS) as mock_settings,
+        ):
+            mock_settings.DEBUG = True
+            result = await service.create_queue_report(
+                restaurant.public_id, valid_payload, _IP, background_tasks
+            )
+
+        assert result is not None
+        mock_repo.create.assert_called_once()
 
 
 # ── TestCreateQueueReport_ConfidenceScore ────────────────────────────────────
@@ -832,7 +866,9 @@ class TestCreateQueueReport_ConfidenceScore:
                 _PATCH_HAVERSINE, return_value=float(restaurant.geofence_radius_m) + 1
             ),
             patch(_PATCH_CONFIDENCE, return_value=Decimal("0.50")) as mock_confidence,
+            patch(_PATCH_SETTINGS) as mock_settings,
         ):
+            mock_settings.DEBUG = False
             with pytest.raises(QueueReportLocationOutOfGeofenceError):
                 await service.create_queue_report(
                     restaurant.public_id, valid_payload, _IP, background_tasks
@@ -1044,7 +1080,9 @@ class TestCreateQueueReport_BackgroundTask:
                 _PATCH_HAVERSINE, return_value=float(restaurant.geofence_radius_m) + 1
             ),
             patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
+            patch(_PATCH_SETTINGS) as mock_settings,
         ):
+            mock_settings.DEBUG = False
             with pytest.raises(QueueReportLocationOutOfGeofenceError):
                 await service.create_queue_report(
                     restaurant.public_id, valid_payload, _IP, background_tasks

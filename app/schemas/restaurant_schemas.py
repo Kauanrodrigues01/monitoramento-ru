@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import ROUND_DOWN, Decimal
 from uuid import UUID, uuid4
 
@@ -94,5 +94,5 @@ class RestaurantResponse(BaseModel):
     lng: Decimal = Field(examples=[-46.63330])
     geofence_radius_m: int = Field(examples=[80])
     is_active: bool = Field(examples=[True])
-    created_at: datetime = Field(examples=[datetime.now()])
-    updated_at: datetime = Field(examples=[datetime.now()])
+    created_at: datetime = Field(examples=[datetime.now(UTC)])
+    updated_at: datetime = Field(examples=[datetime.now(UTC)])

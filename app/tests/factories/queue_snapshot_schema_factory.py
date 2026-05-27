@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from app.models.queue_snapshot import SnapshotStatusEnum
@@ -13,7 +13,7 @@ def build_queue_snapshot_bulk_item(**kwargs) -> QueueSnapshotBulkItem:
         "current_status": SnapshotStatusEnum.NO_DATA,
         "reports_last_15m": 0,
         "last_report_at": None,
-        "updated_at": datetime(2026, 5, 26, 11, 45, 0),
+        "updated_at": datetime(2026, 5, 26, 11, 45, 0, tzinfo=UTC),
     }
     data.update(kwargs)
     return QueueSnapshotBulkItem(**data)

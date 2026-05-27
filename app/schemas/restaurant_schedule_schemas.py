@@ -1,4 +1,4 @@
-from datetime import datetime, time
+from datetime import UTC, datetime, time
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -77,5 +77,5 @@ class RestaurantScheduleResponse(BaseModel):
     opens_at: time = Field(examples=["11:00"])
     closes_at: time = Field(examples=["14:00"])
     is_active: bool
-    created_at: datetime = Field(examples=[datetime.now()])
-    updated_at: datetime = Field(examples=[datetime.now()])
+    created_at: datetime = Field(examples=[datetime.now(UTC)])
+    updated_at: datetime = Field(examples=[datetime.now(UTC)])

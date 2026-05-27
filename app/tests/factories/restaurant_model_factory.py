@@ -1,4 +1,4 @@
-from datetime import date, datetime, time
+from datetime import UTC, date, datetime, time
 from decimal import Decimal
 from uuid import uuid4
 
@@ -28,8 +28,8 @@ class RestaurantFactory(factory.Factory):
     lng = Decimal("-38.727981")
     geofence_radius_m = 80
     is_active = True
-    created_at = factory.LazyFunction(datetime.now)
-    updated_at = factory.LazyFunction(datetime.now)
+    created_at = factory.LazyFunction(lambda: datetime.now(UTC))
+    updated_at = factory.LazyFunction(lambda: datetime.now(UTC))
 
 
 class RestaurantPalmaresFactory(RestaurantFactory):
@@ -67,8 +67,8 @@ class RestaurantScheduleFactory(factory.Factory):
     opens_at = time(11, 0)
     closes_at = time(14, 0)
     is_active = True
-    created_at = factory.LazyFunction(datetime.now)
-    updated_at = factory.LazyFunction(datetime.now)
+    created_at = factory.LazyFunction(lambda: datetime.now(UTC))
+    updated_at = factory.LazyFunction(lambda: datetime.now(UTC))
 
 
 class RestaurantScheduleExceptionFactory(factory.Factory):
@@ -86,5 +86,5 @@ class RestaurantScheduleExceptionFactory(factory.Factory):
     opens_at = None
     closes_at = None
     reason = None
-    created_at = factory.LazyFunction(datetime.now)
-    updated_at = factory.LazyFunction(datetime.now)
+    created_at = factory.LazyFunction(lambda: datetime.now(UTC))
+    updated_at = factory.LazyFunction(lambda: datetime.now(UTC))

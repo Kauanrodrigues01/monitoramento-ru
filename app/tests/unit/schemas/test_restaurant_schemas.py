@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
 from uuid import uuid4
@@ -15,7 +15,7 @@ from app.tests.factories.restaurant_schema_factory import (
 
 
 def _build_restaurant_response_payload() -> dict:
-    now = datetime.now()
+    now = datetime.now(UTC)
     return {
         "public_id": uuid4(),
         "name": "RU PALMARES",

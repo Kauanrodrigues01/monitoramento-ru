@@ -1,4 +1,4 @@
-from datetime import datetime, time
+from datetime import UTC, datetime, time
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -14,7 +14,7 @@ from app.tests.factories.restaurant_schema_factory import (
 
 
 def _build_restaurant_schedule_response_payload() -> dict:
-    now = datetime.now()
+    now = datetime.now(UTC)
     return {
         "public_id": uuid4(),
         "weekday": 0,

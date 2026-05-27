@@ -4,6 +4,7 @@ from enum import Enum
 
 from sqlalchemy import (
     CheckConstraint,
+    DateTime,
     ForeignKey,
     Numeric,
     PrimaryKeyConstraint,
@@ -78,12 +79,14 @@ class QueueSnapshot(Base):
     )
 
     last_report_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
         nullable=True,
     )
 
     restaurant: Mapped[Restaurant] = relationship(back_populates="snapshots")
 
     updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
     )

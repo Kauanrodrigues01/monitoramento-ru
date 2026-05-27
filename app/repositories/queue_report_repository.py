@@ -1,4 +1,8 @@
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
+
+from app.core.datetime_utils import utc_now
+from app.core.settings import settings
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +24,7 @@ class QueueReportRepository:
     async def get_last_by_ip_hash_within_minutes(
         self, ip_hash: str, minutes: int
     ) -> QueueReport | None:
-        cutoff = datetime.now() - timedelta(minutes=minutes)
+        cutoff = utc_now() - timedelta(minutes=minutes)
         result = await self.db_session.execute(
             select(QueueReport)
             .where(QueueReport.ip_hash == ip_hash, QueueReport.created_at >= cutoff)
@@ -37,7 +41,8 @@ class QueueReportRepository:
         limit: int = 100,
         offset: int = 0,
     ) -> list[QueueReport]:
-        day_start = datetime(day.year, day.month, day.day)
+        tz = ZoneInfo(settings.APP_TIMEZONE)
+        day_start = datetime(day.year, day.month, day.day, tzinfo=tz)
         day_end = day_start + timedelta(days=1)
         query = (
             select(QueueReport)
@@ -60,7 +65,7 @@ class QueueReportRepository:
         meal_period: MealPeriodEnum,
         minutes: int,
     ) -> list[QueueReport]:
-        cutoff = datetime.now() - timedelta(minutes=minutes)
+        cutoff = utc_now() - timedelta(minutes=minutes)
         result = await self.db_session.execute(
             select(QueueReport)
             .where(

@@ -1,8 +1,9 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import BackgroundTasks
 
+from app.core.datetime_utils import to_app_tz, utc_now
 from app.core.geo_utils import GeoUtils
 from app.core.logging import get_logger
 from app.core.settings import settings
@@ -142,7 +143,7 @@ class QueueReportService:
             if recent_report:
                 raise QueueReportTooRecentError()
 
-        dt = datetime.fromtimestamp(data.geo_timestamp)
+        dt = to_app_tz(datetime.fromtimestamp(data.geo_timestamp, tz=UTC))
 
         meal_period = await self.meal_period_service.resolve(ru_id=restaurant.id, at=dt)
 
@@ -161,13 +162,20 @@ class QueueReportService:
         )
 
         if distance_m > restaurant.geofence_radius_m:
-            logger.warning(
-                "Relato fora do geofence: ru_id=%s, distance_m=%.1f, geofence_radius_m=%d",
-                restaurant.id,
-                distance_m,
-                restaurant.geofence_radius_m,
-            )
-            raise QueueReportLocationOutOfGeofenceError()
+            if settings.DEBUG:
+                logger.debug(
+                    "[DEBUG] Relato fora do geofence (%.1fm > %dm) — validação ignorada",
+                    distance_m,
+                    restaurant.geofence_radius_m,
+                )
+            else:
+                logger.warning(
+                    "Relato fora do geofence: ru_id=%s, distance_m=%.1f, geofence_radius_m=%d",
+                    restaurant.id,
+                    distance_m,
+                    restaurant.geofence_radius_m,
+                )
+                raise QueueReportLocationOutOfGeofenceError()
 
         try:
             queue_report = await self.repo.create(
@@ -220,7 +228,7 @@ class QueueReportService:
             restaurant_public_id
         )
 
-        now = datetime.now()
+        now = to_app_tz(utc_now())
         meal_period = await self.meal_period_service.resolve(
             ru_id=restaurant.id, at=now
         )

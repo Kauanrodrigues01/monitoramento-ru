@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -69,18 +69,20 @@ class TestListRecentQueueReports:
         restaurant,
     ):
         from freezegun import freeze_time
+        from app.core.datetime_utils import to_app_tz
 
-        fixed_now = datetime(2025, 5, 25, 12, 0, 0)
+        fixed_now_utc = datetime(2025, 5, 25, 12, 0, 0, tzinfo=UTC)
+        expected_local = to_app_tz(fixed_now_utc)
         mock_restaurant_repo.get_by_public_id.return_value = restaurant
         mock_meal_period_service.resolve.return_value = MealPeriodEnum.LUNCH
         mock_repo.list_recent_by_period.return_value = []
 
-        with freeze_time(fixed_now):
+        with freeze_time(fixed_now_utc):
             await service.list_recent_queue_reports(restaurant.public_id)
 
         mock_meal_period_service.resolve.assert_called_once_with(
             ru_id=restaurant.id,
-            at=fixed_now,
+            at=expected_local,
         )
 
     async def test_restaurant_closed_propagates_restaurant_closed_all_day_error(
@@ -138,15 +140,18 @@ class TestListRecentQueueReports:
     ):
         from freezegun import freeze_time
 
-        fixed_now = datetime(2025, 5, 25, 12, 0, 0)
+        from app.core.datetime_utils import to_app_tz
+
+        fixed_now_utc = datetime(2025, 5, 25, 12, 0, 0, tzinfo=UTC)
+        expected_date = to_app_tz(fixed_now_utc).date()
         mock_restaurant_repo.get_by_public_id.return_value = restaurant
         mock_meal_period_service.resolve.return_value = MealPeriodEnum.LUNCH
         mock_repo.list_recent_by_period.return_value = []
 
-        with freeze_time(fixed_now):
+        with freeze_time(fixed_now_utc):
             await service.list_recent_queue_reports(restaurant.public_id)
 
         call_kwargs = mock_repo.list_recent_by_period.call_args.kwargs
         assert call_kwargs["ru_id"] == restaurant.id
         assert call_kwargs["meal_period"] == MealPeriodEnum.LUNCH
-        assert call_kwargs["day"] == fixed_now.date()
+        assert call_kwargs["day"] == expected_date

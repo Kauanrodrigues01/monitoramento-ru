@@ -1,4 +1,4 @@
-from datetime import date, datetime, time
+from datetime import UTC, date, datetime, time
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -95,5 +95,5 @@ class RestaurantScheduleExceptionResponse(BaseModel):
     opens_at: time | None = Field(examples=["11:00"])
     closes_at: time | None = Field(examples=["14:00"])
     reason: str | None = Field(examples=["Feriado nacional"])
-    created_at: datetime = Field(examples=[datetime.now()])
-    updated_at: datetime = Field(examples=[datetime.now()])
+    created_at: datetime = Field(examples=[datetime.now(UTC)])
+    updated_at: datetime = Field(examples=[datetime.now(UTC)])

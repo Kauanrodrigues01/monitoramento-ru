@@ -132,7 +132,7 @@ elif distance >= 1.5: score -= 0.15   # divergência moderada
 - [ ] Implementar penalidade de distância — skip se `snapshot` for `None` ou `snapshot.avg_status_value` for `None`
 
 #### `QueueReportService` (`app/services/queue_report_service.py`)
-- [ ] Verificar ordem do pipeline — `meal_period` deve ser inferido **antes** do cálculo do confidence score para que o snapshot possa ser buscado. Reordenar se necessário:
+- [ ] Verificar ordem do pipeline — `meal_period` deve ser inferido **antes** do cálculo do confidence score. Reordenar se necessário:
   `valida geofence → infere meal_period → busca snapshot → calcula confidence_score → persiste`
 - [ ] Buscar snapshot via `snapshot_repo.get_by_ru_id_and_meal_period` após inferir `meal_period`
 - [ ] Passar snapshot para `ConfidenceScoreService`
@@ -154,38 +154,82 @@ elif distance >= 1.5: score -= 0.15   # divergência moderada
 - [ ] `test_queue_report_service.py`:
   - Snapshot é buscado após inferência do `meal_period`
   - Snapshot é passado ao `ConfidenceScoreService`
+- [ ] Atualizar testes de todas as classes que usam `ConfidenceScoreService` para passar `snapshot` como parâmetro
 
-### 2. Testes de integração
+### 2. Refactoring
+- [ ] **Extrair `_get_restaurant_by_public_id_or_error`** — método privado duplicado em `QueueReportService`, `RestaurantScheduleService`, `RestaurantScheduleExceptionService` e `QueueSnapshotService`. Candidato a `RestaurantResolverMixin` ou função utilitária em `app/services/_utils.py`. Teste isolado em `test_get_restaurant_or_error.py` já cobre o comportamento.
+- [ ] Atualizar testes necessários após refatoração
+
+### 3. WebSocket — status em tempo real
+- [ ] Endpoint `WS /v1/ws/restaurants/{public_id}/status?token=...`
+- [ ] Ao conectar: enviar snapshot atual imediatamente
+- [ ] A cada recálculo de snapshot (Background Task): publicar novo snapshot para todos os clientes conectados no RU
+- [ ] Se RU estiver fechado no momento da conexão: retornar código de fechamento `4000` com mensagem `RU_CLOSED`
+- [ ] Contrato de reconexão (documentado para o cliente): backoff exponencial — 1s, 2s, 4s, 8s, 16s, máx 30s; após 5 tentativas sem sucesso exibir aviso de conectividade
+- [ ] Rate limit: 1 conexão simultânea por IP por RU
+- [ ] Testes do endpoint WebSocket
+
+### 4. Testes de integração
 - [ ] Endpoints de `restaurants.py`
 - [ ] Endpoints de `restaurant_schedules.py`
 - [ ] Endpoints de `restaurant_schedule_exceptions.py`
 - [ ] Endpoints de `queue_reports.py`
 - [ ] Endpoints de `queue_snapshots.py`
 
-### 3. Refactoring
-- [ ] **Extrair `_get_restaurant_by_public_id_or_error`** — método privado duplicado em `QueueReportService`, `RestaurantScheduleService`, `RestaurantScheduleExceptionService` e `QueueSnapshotService`. Candidato a `RestaurantResolverMixin` ou função utilitária em `app/services/_utils.py`. Teste isolado em `test_get_restaurant_or_error.py` já cobre o comportamento.
-- [ ] Atualizar testes necessários após refatoração
-
 ---
 
 ## 🔭 Melhorias futuras (pós-MVP)
 
+### Observabilidade
+- [ ] **structlog** — substituir logger padrão por structlog para logs estruturados em JSON
+- [ ] **Prometheus + Grafana** — expor métricas via `prometheus-fastapi-instrumentator` (`/metrics`) e criar dashboards de latência, taxa de erros e volume de relatos por RU
+
 ### Processamento assíncrono
-- [ ] **Celery + Redis Broker** — substituir Background Tasks do FastAPI por Celery para recálculo do snapshot. Retorno do `POST /reports` passa de `201` para `202 Accepted`
-- [ ] **sqlalchemy-celery-beat** — scheduler dinâmico com schedules persistidos no PostgreSQL
-- [ ] **`close_meal_period_task`** — disparada pelo beat no `closes_at` de cada slot: encerra o período, reseta snapshot para `NO_DATA`, invalida Redis, publica evento WebSocket
-- [ ] **`aggregate_meal_period_task`** — enfileirada por `close_meal_period_task` quando o período teve relatos: processa buckets fixos de 10 min e grava em `queue_aggregates_10m`
-- [ ] **`FOOD_ENDED` override via Redis** — substituir remoção implícita por TTL explícito: `min(30 min, tempo restante até closes_at)`. Garante expiração precisa independente de novos relatos chegarem
-- [ ] **Job 2 — Cache semanal** — CrontabSchedule aos domingos: lê `queue_aggregates_10m`, aplica `normalize_for_query`, salva no Redis (`analytics:ru:{id}:weekly`, TTL 7 dias)
-- [ ] **Job 3 — Limpeza de dados** — CrontabSchedule às segundas: aplica política de retenção (90 dias para `queue_reports`, 365 dias para `queue_aggregates_10m` e `admin_audit_log`)
+
+> **Broker:** RabbitMQ (em vez de Redis). Vantagens sobre Redis como broker: persistência de mensagens em disco por padrão (tasks sobrevivem a crashes de workers), Dead Letter Queue nativa para tasks que esgotaram retries, Management UI com visibilidade de filas em tempo real. Redis permanece exclusivamente para cache (snapshots, schedules, rate limit).
+
+#### Infraestrutura
+- [ ] Adicionar serviço `rabbitmq` ao Docker Compose (`rabbitmq:3-management`) com Management UI na porta 15672
+- [ ] Configurar Celery com `broker_url = amqp://...` e `result_backend = redis://...`
+- [ ] Substituir Background Tasks do FastAPI por Celery task `update_snapshot_task(ru_id)`. Retorno do `POST /reports` passa de `201` para `202 Accepted`
+- [ ] **sqlalchemy-celery-beat** — scheduler dinâmico com schedules persistidos no PostgreSQL para tasks com horário variável (baseadas em `restaurant_schedules`)
+
+#### `queue_aggregates_10m` — model e infraestrutura
+- [ ] Model `queue_aggregate_10m` com campos: `ru_id`, `meal_period`, `weekday`, `bucket_start`, `bucket_end`, `avg_status`, `avg_confidence`, `report_count`, `food_ended_count`
+  - PK composta: `(ru_id, meal_period, bucket_start)`
+  - `bucket_start` sempre múltiplo de 10 min do grid global (00:00, 00:10 ... 23:50)
+  - `weekday` extraído de `bucket_start` via `EXTRACT(DOW FROM bucket_start)` na task
+  - Índice adicional: `(ru_id, weekday, meal_period)` para queries de heatmap
+- [ ] Repository: `upsert_bucket`, `list_by_ru_and_period`, `list_for_heatmap`
+- [ ] Schemas de response para endpoint de previsão
+- [ ] Testes do model e repository
+
+#### Tasks assíncronas
+- [ ] **`close_meal_period_task(ru_id, meal_period, opens_at, closes_at)`** — disparada pelo beat no `closes_at` de cada slot:
+  1. Verifica se houve relatos no período
+  2. Se sim: enfileira `aggregate_meal_period_task`
+  3. Reseta snapshot: `current_status=NO_DATA`, `last_report_at=None`, `reports_last_15m=0`, `confidence_score=1.00`, `avg_status_value=None`
+  4. Invalida cache Redis do snapshot
+  5. Publica evento WebSocket `RU_CLOSED` para clientes conectados
+- [ ] **`aggregate_meal_period_task(ru_id, meal_period, opens_at, closes_at)`** — processa relatos do período encerrado em buckets fixos de 10 min e grava em `queue_aggregates_10m`
+- [ ] **`FOOD_ENDED` override via Redis** — substituir remoção implícita por janela por TTL explícito no Redis: `min(30 min, tempo restante até closes_at)`. Garante expiração precisa independente de novos relatos chegarem
+- [ ] **`sync_scheduled_tasks(ru_id, target_date)`** — chamada no startup e a cada alteração de `restaurant_schedules` ou `restaurant_schedule_exceptions`: cria/atualiza `PeriodicTask` com `ClockedSchedule` apontando para o `closes_at` de cada slot
+- [ ] Testes das tasks
+
+#### Job 2 — Cache semanal (CrontabSchedule, domingos às 02:00)
+- [ ] Lê `queue_aggregates_10m` agrupando por `ru_id`, `weekday`, `meal_period`
+- [ ] Aplica `normalize_for_query(opens_at, closes_at, bucket_size=10)` para filtrar buckets dentro do schedule vigente
+- [ ] Calcula médias de `avg_status` e `report_count` por slot
+- [ ] Salva no Redis: `analytics:ru:{id}:weekly` com TTL de 7 dias
+- [ ] Endpoint `GET /v1/restaurants/{public_id}/prediction` — retorna previsão histórica filtrada pelo schedule atual
+
+#### Job 3 — Limpeza de dados *(em avaliação)*
+- [ ] Política de retenção a definir: 90 dias para `queue_reports`, 365 dias para `queue_aggregates_10m` e `admin_audit_log`
+- [ ] Avaliar se a limpeza será via CrontabSchedule (Celery), pg_cron, ou script de manutenção manual
 
 ### Confidence score — penalidades históricas
 - [ ] **IP com histórico inconsistente** — requer `queue_aggregates_10m` populado com histórico suficiente
 - [ ] **Relato inconsistente com histórico recente do RU** — idem
-
-### Observabilidade
-- [ ] **structlog** — substituir logger padrão por structlog para logs estruturados em JSON
-- [ ] **Prometheus + Grafana** — expor métricas via `prometheus-fastapi-instrumentator` (`/metrics`)
 
 ### Resiliência
 - [ ] **Timeouts em cascata** — `statement_timeout` no PostgreSQL, `socket_timeout` no Redis, `httpx.Timeout` para clientes externos, `--timeout-keep-alive` no uvicorn
@@ -206,3 +250,4 @@ elif distance >= 1.5: score -= 0.15   # divergência moderada
 | `geo_sig_valid` | Campo no banco | Removido | Campo invariante — sempre `true`, sem valor analítico |
 | Recálculo snapshot | Celery task | Background Tasks FastAPI | Bridge para MVP — evolui para Celery na fase de processamento assíncrono |
 | Expiração `FOOD_ENDED` | TTL Redis explícito | Remoção implícita por janela de 5 min | Sem Redis no MVP — expira quando ≥3 relatos FOOD_ENDED saem da janela e chega novo relato |
+| Broker Celery | Redis | RabbitMQ | RabbitMQ para tasks (persistência, DLQ, visibilidade); Redis exclusivo para cache |

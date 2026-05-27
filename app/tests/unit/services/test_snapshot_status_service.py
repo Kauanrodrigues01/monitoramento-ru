@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import AsyncMock
 
@@ -23,7 +23,7 @@ from app.services.meal_period_service import MealPeriodService
 from app.services.snapshot_status_service import SnapshotStatusService
 from app.tests.factories.restaurant_model_factory import RestaurantFactory
 
-_NOW = datetime(2026, 5, 27, 12, 0, 0)
+_NOW = datetime(2026, 5, 27, 12, 0, 0, tzinfo=UTC)
 
 
 def _make_report(
@@ -509,13 +509,13 @@ class TestCalculateSnapshotStatus:
         mock_meal_period_service.resolve.return_value = MealPeriodEnum.DINNER
 
         report_before_midnight = _make_report(status=ReportStatusEnum.LARGE)
-        report_before_midnight.created_at = datetime(2026, 5, 26, 23, 58, 0)
+        report_before_midnight.created_at = datetime(2026, 5, 26, 23, 58, 0, tzinfo=UTC)
 
         mock_report_repo.list_recent_by_period_within_minutes.return_value = [
             report_before_midnight
         ]
 
-        with freeze_time(datetime(2026, 5, 27, 0, 2, 0)):
+        with freeze_time(datetime(2026, 5, 27, 0, 2, 0, tzinfo=UTC)):
             result = await service.calculate_snapshot_status(1)
 
         assert result == SnapshotStatusEnum.LARGE

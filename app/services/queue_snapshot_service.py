@@ -1,4 +1,4 @@
-from datetime import datetime
+from app.core.datetime_utils import to_app_tz, utc_now
 from uuid import UUID
 
 from app.core.logging import get_logger
@@ -51,7 +51,7 @@ class QueueSnapshotService:
             restaurant_public_id
         )
 
-        dt = datetime.now()
+        dt = to_app_tz(utc_now())
 
         meal_period = await self.meal_period_service.resolve(ru_id=restaurant.id, at=dt)
 
@@ -88,7 +88,7 @@ class QueueSnapshotService:
             )
             return []
 
-        dt = datetime.now()
+        dt = to_app_tz(utc_now())
 
         # resolve meal_period por restaurante; pula fechados/fora de horário
         period_groups: dict[MealPeriodEnum, list[Restaurant]] = {}

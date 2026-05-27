@@ -38,5 +38,7 @@ class Settings(BaseSettings):
 
     DEBUG: bool = False
 
+    APP_TIMEZONE: str = "America/Fortaleza"
+
 
 settings = Settings()

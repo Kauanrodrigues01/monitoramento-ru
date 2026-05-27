@@ -1,4 +1,4 @@
-from datetime import date, datetime, time
+from datetime import UTC, date, datetime, time
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -16,7 +16,7 @@ from app.tests.factories.restaurant_schema_factory import (
 
 
 def _build_exception_response_payload(**kwargs) -> dict:
-    now = datetime.now()
+    now = datetime.now(UTC)
     data = {
         "public_id": uuid4(),
         "exception_date": date(2025, 12, 25),

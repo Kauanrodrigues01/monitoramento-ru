@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -40,11 +40,11 @@ class QueueSnapshotBulkItem(BaseModel):
     )
     last_report_at: datetime | None = Field(
         description="Data e hora do último relato recebido.",
-        examples=[datetime(2026, 5, 26, 11, 45, 0)],
+        examples=[datetime(2026, 5, 26, 11, 45, 0, tzinfo=UTC)],
     )
     updated_at: datetime = Field(
         description="Data e hora da última atualização do snapshot.",
-        examples=[datetime(2026, 5, 26, 11, 45, 0)],
+        examples=[datetime(2026, 5, 26, 11, 45, 0, tzinfo=UTC)],
     )
 
 
@@ -65,9 +65,9 @@ class QueueSnapshotResponse(BaseModel):
     )
     last_report_at: datetime | None = Field(
         description="Data e hora do último relato recebido.",
-        examples=[datetime(2026, 5, 26, 11, 45, 0)],
+        examples=[datetime(2026, 5, 26, 11, 45, 0, tzinfo=UTC)],
     )
     updated_at: datetime = Field(
         description="Data e hora da última atualização do snapshot.",
-        examples=[datetime(2026, 5, 26, 11, 45, 0)],
+        examples=[datetime(2026, 5, 26, 11, 45, 0, tzinfo=UTC)],
     )

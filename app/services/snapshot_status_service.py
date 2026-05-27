@@ -1,6 +1,8 @@
 from datetime import datetime
 from decimal import Decimal
 
+from app.core.datetime_utils import to_app_tz, utc_now
+
 from app.core.logging import get_logger
 from app.exceptions.queue_snapshot_exceptions import QueueSnapshotNotFoundError
 from app.exceptions.restaurant_exceptions import RestaurantNotFoundError
@@ -96,7 +98,7 @@ class SnapshotStatusService:
     ) -> tuple[Restaurant, MealPeriodEnum, list[QueueReport]]:
         """Resolve restaurant, meal_period e relatos dos últimos 15min (3 queries)."""
         restaurant = await self._get_restaurant_by_id_or_error(ru_id)
-        dt = datetime.now()
+        dt = to_app_tz(utc_now())
         meal_period = await self.meal_period_service.resolve(ru_id=restaurant.id, at=dt)
         recent_reports = await self.report_repo.list_recent_by_period_within_minutes(
             ru_id=restaurant.id,
@@ -112,7 +114,7 @@ class SnapshotStatusService:
         if not recent_reports:
             return SnapshotStatusEnum.NO_DATA, Decimal("1.00")
 
-        now = datetime.now()
+        now = utc_now()
 
         # FOOD_ENDED quorum: ≥3 relatos nos últimos 5min sobrescreve qualquer cálculo
         food_ended_5min = [

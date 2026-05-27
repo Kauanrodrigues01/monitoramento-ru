@@ -53,3 +53,21 @@ class QueueReportRepository:
         )
         result = await self.db_session.execute(query)
         return result.scalars().all()
+
+    async def list_recent_by_period_within_minutes(
+        self,
+        ru_id: int,
+        meal_period: MealPeriodEnum,
+        minutes: int,
+    ) -> list[QueueReport]:
+        cutoff = datetime.now() - timedelta(minutes=minutes)
+        result = await self.db_session.execute(
+            select(QueueReport)
+            .where(
+                QueueReport.ru_id == ru_id,
+                QueueReport.meal_period == meal_period,
+                QueueReport.created_at >= cutoff,
+            )
+            .order_by(QueueReport.created_at.desc())
+        )
+        return result.scalars().all()

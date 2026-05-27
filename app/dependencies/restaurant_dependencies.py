@@ -16,7 +16,8 @@ from app.services.restaurant_service import RestaurantService
 
 
 def get_restaurant_service(db_session: DBSessionDep) -> RestaurantService:
-    return RestaurantService(repo=RestaurantRepository(db_session=db_session))
+    repo = RestaurantRepository(db_session=db_session)
+    return RestaurantService(repo=repo)
 
 
 RestaurantServiceDep = Annotated[
@@ -28,10 +29,9 @@ RestaurantServiceDep = Annotated[
 def get_restaurant_schedule_service(
     db_session: DBSessionDep,
 ) -> RestaurantScheduleService:
-    return RestaurantScheduleService(
-        repo=RestaurantScheduleRepository(db_session=db_session),
-        restaurant_repo=RestaurantRepository(db_session=db_session),
-    )
+    repo = RestaurantScheduleRepository(db_session=db_session)
+    restaurant_repo = RestaurantRepository(db_session=db_session)
+    return RestaurantScheduleService(repo=repo, restaurant_repo=restaurant_repo)
 
 
 RestaurantScheduleServiceDep = Annotated[
@@ -43,10 +43,9 @@ RestaurantScheduleServiceDep = Annotated[
 def get_restaurant_schedule_exception_service(
     db_session: DBSessionDep,
 ) -> RestaurantScheduleExceptionService:
-    return RestaurantScheduleExceptionService(
-        repo=RestaurantScheduleExceptionRepository(db_session=db_session),
-        restaurant_repo=RestaurantRepository(db_session=db_session),
-    )
+    repo = RestaurantScheduleExceptionRepository(db_session=db_session)
+    restaurant_repo = RestaurantRepository(db_session=db_session)
+    return RestaurantScheduleExceptionService(repo=repo, restaurant_repo=restaurant_repo)
 
 
 RestaurantScheduleExceptionServiceDep = Annotated[

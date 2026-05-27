@@ -25,8 +25,7 @@
 
 ### Queue Reports
 - [x] Model, service, schemas, repository
-- [x] Endpoint: `POST` (público)
-- [x] Pipeline de validação no `POST`:
+- [x] Endpoint `POST` (público) com pipeline de validação:
   - [x] Restaurant existe e está ativo
   - [x] Assinatura HMAC com `APP_GEO_SECRET` — payload: `{lat:.6f}|{lng:.6f}|{accuracy_m:.1f}|{geo_timestamp}` — retorna `400` se inválida
   - [x] Janela temporal da assinatura: 60s por padrão (`GEO_SIGNATURE_MAX_SKEW_SECONDS` no `.env`)
@@ -35,10 +34,9 @@
   - [x] Geofence (distância vs `geofence_radius_m` do restaurant)
 - [x] Campos inferidos pelo servidor: `meal_period`, `ip_hash`, `confidence_score`
 - [x] Retorna `201` (sem async ainda — evolui para `202` com Celery)
-
-### Queue Reports — listagem
-- [x] `GET /v1/restaurants/{public_id}/reports/recent` — últimos 20 relatos do período vigente
+- [x] Endpoint `GET /v1/restaurants/{public_id}/reports/recent` — últimos 20 relatos do período vigente
 - [x] Response: apenas `public_id`, `status`, `meal_period`, `created_at`
+- [x] Testes de schemas e services
 
 ### Confidence Score Service
 - [x] `is_mock_location = true` → −0.80
@@ -71,14 +69,14 @@
 ## 🔲 Pendente — ordenado por prioridade
 
 ### 1. Testes unitários pendentes
-- [x] `MealPeriodService`
-- [x] `QueueReportService`
+- Nenhum
 
 ### 2. Queue Snapshots
-- [ ] Model `queue_snapshot`
-- [ ] Seed: cada restaurant recebe 2 snapshots (`LUNCH/NO_DATA`, `DINNER/NO_DATA`)
-- [ ] Schemas, repository, service
-- [ ] Endpoint: `GET /v1/restaurants/{public_id}/status`
+- [x] Model `queue_snapshot`
+- [x] Seed: cada restaurant recebe 2 snapshots (`LUNCH/NO_DATA`, `DINNER/NO_DATA`)
+- [x] Schemas, repository, service
+- [x] Endpoint: `GET /v1/restaurants/{public_id}/status`
+- [x] Endpoint: `GET /v1/restaurants/status/bulk?ids=uuid1,uuid2,...` (bulk)
 - [ ] Possivelmente: criação automática dos snapshots junto com o restaurant (`POST /restaurants`)
 - [ ] Testes de schemas
 - [ ] Testes de service
@@ -93,7 +91,7 @@
   ```
   Apenas relatos dentro da janela temporal adaptativa e do `meal_period` vigente.
 - [ ] Testes do `SnapshotStatusService`
-- [ ] Atualização síncrona do snapshot no `QueueReportService` após criação de report *(evolui para Celery task depois)*
+- [ ] Atualização assincrona do snapshot no `QueueReportService` após criação de report usando Background Tasks do FastAPI *(evolui para Celery task depois)*
 
 ### 4. Testes de integração
 - [ ] Endpoints de `restaurants.py`

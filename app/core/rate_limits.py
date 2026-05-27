@@ -1,5 +1,8 @@
-# Rate limit para endpoints de leitura
+# Rate limit para endpoints de leitura simples (1 query)
 READ_RATE_LIMIT = "60/minute"
+
+# Rate limit para endpoints de leitura em lote (N queries por request)
+BULK_READ_RATE_LIMIT = "20/minute"
 
 # Rate limit para create/update de Restaurant
 CREATE_RESTAURANT_RATE_LIMIT = "10/minute"

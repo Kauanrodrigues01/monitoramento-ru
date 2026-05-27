@@ -5,13 +5,13 @@ from uuid import uuid4
 from sqlalchemy import select
 
 from app.core.database import AsyncSessionLocal
+from app.models.queue_snapshot import QueueSnapshot, SnapshotStatusEnum
 from app.models.restaurant import (
     CampusEnum,
     MealPeriodEnum,
     Restaurant,
     RestaurantSchedule,
 )
-
 
 RESTAURANTS = [
     {
@@ -100,11 +100,41 @@ async def seed_restaurants() -> None:
                     session.add(schedule)
                     schedules_created += 1
 
+        snapshots_created = 0
+
+        for restaurant_data in RESTAURANTS:
+            restaurant = await session.scalar(
+                select(Restaurant).where(Restaurant.name == restaurant_data["name"])
+            )
+
+            if not restaurant:
+                continue
+
+            for meal_period in (MealPeriodEnum.LUNCH, MealPeriodEnum.DINNER):
+                existing_snapshot = await session.scalar(
+                    select(QueueSnapshot).where(
+                        QueueSnapshot.ru_id == restaurant.id,
+                        QueueSnapshot.meal_period == meal_period,
+                    )
+                )
+
+                if existing_snapshot:
+                    continue
+
+                snapshot = QueueSnapshot(
+                    ru_id=restaurant.id,
+                    meal_period=meal_period,
+                    current_status=SnapshotStatusEnum.NO_DATA,
+                )
+                session.add(snapshot)
+                snapshots_created += 1
+
         await session.commit()
 
         print(
             f"Seed completed. "
-            f"{restaurants_created} restaurant(s) and {schedules_created} schedule(s) created."
+            f"{restaurants_created} restaurant(s), {schedules_created} schedule(s) "
+            f"and {snapshots_created} snapshot(s) created."
         )
 
 

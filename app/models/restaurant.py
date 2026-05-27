@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 
 if TYPE_CHECKING:
     from app.models.queue_reports import QueueReport
+    from app.models.queue_snapshot import QueueSnapshot
 
 from sqlalchemy import (
     CheckConstraint,
@@ -40,7 +41,7 @@ class MealPeriodEnum(str, Enum):
     DINNER = "DINNER"
 
 
-meal_period_enum = SQLEnum(
+meal_period_sqlenum = SQLEnum(
     MealPeriodEnum,
     name="meal_period_enum",
     create_type=False,
@@ -102,6 +103,10 @@ class Restaurant(Base):
         cascade="all, delete-orphan",
     )
 
+    snapshots: Mapped[list["QueueSnapshot"]] = relationship(
+        back_populates="restaurant", cascade="all, delete-orphan"
+    )
+
 
 class RestaurantSchedule(Base):
     __tablename__ = "restaurant_schedules"
@@ -151,7 +156,7 @@ class RestaurantSchedule(Base):
 
     weekday: Mapped[int]
 
-    meal_period: Mapped[MealPeriodEnum] = mapped_column(meal_period_enum)
+    meal_period: Mapped[MealPeriodEnum] = mapped_column(meal_period_sqlenum)
 
     # datetime.time -> SQL TIME
     # Ex: 11:00:00
@@ -234,7 +239,7 @@ class RestaurantScheduleException(Base):
 
     # null = exceção se aplica ao dia inteiro (ambos os períodos)
     meal_period: Mapped[MealPeriodEnum | None] = mapped_column(
-        meal_period_enum,
+        meal_period_sqlenum,
         nullable=True,
     )
 

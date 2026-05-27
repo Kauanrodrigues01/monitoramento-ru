@@ -52,6 +52,13 @@ _TAGS_METADATA = [
             "Requer geo-assinatura válida.\n\n"
         ),
     },
+    {
+        "name": "Queue Snapshots",
+        "description": (
+            "Status atual estimado da fila para cada restaurante e período de refeição, "
+            "calculado a partir dos relatórios recentes e do horário de funcionamento.\n\n"
+        ),
+    }
 ]
 
 app = FastAPI(

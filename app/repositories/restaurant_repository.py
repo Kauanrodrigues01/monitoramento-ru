@@ -43,6 +43,15 @@ class RestaurantRepository:
         await self.db_session.refresh(restaurant)
         return restaurant
 
+    async def get_bulk_by_public_ids(
+        self, public_ids: list[UUID], only_active: bool = True
+    ) -> list[Restaurant]:
+        query = select(Restaurant).where(Restaurant.public_id.in_(public_ids))
+        if only_active:
+            query = query.where(Restaurant.is_active.is_(True))
+        result = await self.db_session.scalars(query)
+        return list(result.all())
+
     async def get_all(self, only_active: bool = True) -> list[Restaurant]:
         query = select(Restaurant)
         if only_active:

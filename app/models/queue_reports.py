@@ -8,7 +8,7 @@ from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
-from app.models.restaurant import MealPeriodEnum, Restaurant, meal_period_enum
+from app.models.restaurant import MealPeriodEnum, Restaurant, meal_period_sqlenum
 
 
 class ReportStatusEnum(str, Enum):
@@ -17,6 +17,12 @@ class ReportStatusEnum(str, Enum):
     MEDIUM = "MEDIUM"
     LARGE = "LARGE"
     FOOD_ENDED = "FOOD_ENDED"
+
+
+confidence_score_constraint = CheckConstraint(
+    "confidence_score >= 0.05 AND confidence_score <= 1.00",
+    name="ck_confidence_score_between_0_05_and_1",
+)
 
 
 class QueueReport(Base):
@@ -29,10 +35,7 @@ class QueueReport(Base):
             "meal_period",
             "created_at",
         ),
-        CheckConstraint(
-            "confidence_score BETWEEN 0.05 AND 1",
-            name="ck_confidence_score_between_0_05_and_1",
-        ),
+        confidence_score_constraint,
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -49,7 +52,7 @@ class QueueReport(Base):
         SQLEnum(ReportStatusEnum, name="queue_report_status_enum")
     )
 
-    meal_period: Mapped[MealPeriodEnum] = mapped_column(meal_period_enum)
+    meal_period: Mapped[MealPeriodEnum] = mapped_column(meal_period_sqlenum)
 
     lat: Mapped[Decimal] = mapped_column(Numeric(9, 6))
     lng: Mapped[Decimal] = mapped_column(Numeric(9, 6))

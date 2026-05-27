@@ -1,11 +1,13 @@
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from fastapi import BackgroundTasks
 
 from app.repositories.queue_report_repository import QueueReportRepository
 from app.repositories.restaurant_repository import RestaurantRepository
 from app.services.meal_period_service import MealPeriodService
 from app.services.queue_report_service import QueueReportService
+from app.services.snapshot_status_service import SnapshotStatusService
 from app.tests.factories.queue_report_schema_factory import (
     build_queue_report_create_schema,
 )
@@ -45,9 +47,25 @@ def mock_meal_period_service():
 
 
 @pytest.fixture
-def service(mock_repo, mock_restaurant_repo, mock_meal_period_service):
+def mock_snapshot_status_service():
+    return AsyncMock(spec=SnapshotStatusService)
+
+
+@pytest.fixture
+def background_tasks():
+    return MagicMock(spec=BackgroundTasks)
+
+
+@pytest.fixture
+def service(
+    mock_repo,
+    mock_restaurant_repo,
+    mock_meal_period_service,
+    mock_snapshot_status_service,
+):
     return QueueReportService(
         repo=mock_repo,
         restaurant_repo=mock_restaurant_repo,
         meal_period_service=mock_meal_period_service,
+        snapshot_status_service=mock_snapshot_status_service,
     )

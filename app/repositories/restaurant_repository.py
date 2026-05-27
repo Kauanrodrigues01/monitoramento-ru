@@ -10,6 +10,11 @@ class RestaurantRepository:
     def __init__(self, db_session: AsyncSession):
         self.db_session = db_session
 
+    async def get_by_id(self, id: int) -> Restaurant | None:
+        query = select(Restaurant).where(Restaurant.id == id)
+        result = await self.db_session.scalar(query)
+        return result
+
     async def get_by_public_id(
         self, public_id: UUID, only_active: bool = True
     ) -> Restaurant | None:

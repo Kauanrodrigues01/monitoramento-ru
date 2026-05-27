@@ -1,6 +1,8 @@
 from datetime import datetime
 from uuid import UUID
 
+from fastapi import BackgroundTasks
+
 from app.core.geo_utils import GeoUtils
 from app.core.logging import get_logger
 from app.core.settings import settings
@@ -18,6 +20,7 @@ from app.services.confidence_score_service import ConfidenceScoreService
 from app.services.geo_signature_service import GeoSignatureService
 from app.services.ip_service import IpService
 from app.services.meal_period_service import MealPeriodService
+from app.services.snapshot_status_service import SnapshotStatusService
 
 logger = get_logger(__name__)
 
@@ -31,10 +34,12 @@ class QueueReportService:
         repo: QueueReportRepository,
         restaurant_repo: RestaurantRepository,
         meal_period_service: MealPeriodService,
+        snapshot_status_service: SnapshotStatusService,
     ):
         self.repo = repo
         self.restaurant_repo = restaurant_repo
         self.meal_period_service = meal_period_service
+        self.snapshot_status_service = snapshot_status_service
 
     async def _get_restaurant_by_public_id_or_error(
         self, public_id: UUID
@@ -51,6 +56,7 @@ class QueueReportService:
         restaurant_public_id: UUID,
         queue_report_data: QueueReportCreate,
         ip: str | None,
+        background_tasks: BackgroundTasks,
     ) -> QueueReport:
         """
         Cria um relato de fila para um restaurante.
@@ -186,7 +192,17 @@ class QueueReportService:
             distance_m,
         )
 
+        background_tasks.add_task(self._update_snapshot_safe, restaurant.id)
+
         return queue_report
+
+    async def _update_snapshot_safe(self, ru_id: int) -> None:
+        try:
+            await self.snapshot_status_service.update_snapshot(ru_id)
+        except Exception:
+            logger.warning(
+                "Falha ao atualizar snapshot em background: ru_id=%s", ru_id, exc_info=True
+            )
 
     async def list_recent_queue_reports(
         self, restaurant_public_id: UUID

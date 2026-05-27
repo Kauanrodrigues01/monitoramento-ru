@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, BackgroundTasks, Request
 
 from app.core.openapi_responses import (
     INTERNAL_SERVER_ERROR_RESPONSE,
@@ -55,10 +55,11 @@ async def create_queue_report(
     queue_report_data: QueueReportCreate,
     service: QueueReportServiceDep,
     request: Request,
+    background_tasks: BackgroundTasks,
 ):
     ip = IpService.get_client_ip(request)
     return await service.create_queue_report(
-        restaurant_public_id, queue_report_data, ip
+        restaurant_public_id, queue_report_data, ip, background_tasks
     )
 
 

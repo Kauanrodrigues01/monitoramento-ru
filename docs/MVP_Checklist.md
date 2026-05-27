@@ -64,63 +64,72 @@
 | `POST /restaurants/{id}/reports` | 20 req/min por IP (DoS bruto; cooldown real no service) |
 | `GET /restaurants/{id}/reports/recent` | 60 req/min por IP |
 
----
-
-## 🔲 Pendente — ordenado por prioridade
-
-### 1. Testes unitários pendentes
-- Nenhum
-
-### 2. Queue Snapshots
+### Queue Snapshots
 - [x] Model `queue_snapshot`
 - [x] Seed: cada restaurant recebe 2 snapshots (`LUNCH/NO_DATA`, `DINNER/NO_DATA`)
+- [x] Criação automática dos snapshots junto com o restaurant (`POST /restaurants`)
 - [x] Schemas, repository, service
 - [x] Endpoint: `GET /v1/restaurants/{public_id}/status`
-- [x] Endpoint: `GET /v1/restaurants/status/bulk?ids=uuid1,uuid2,...` (bulk)
-- [x] Possivelmente: criação automática dos snapshots junto com o restaurant (`POST /restaurants`)
+- [x] Endpoint: `GET /v1/restaurants/status/bulk?ids=uuid1,uuid2,...`
 - [x] Testes de schemas
 - [x] Testes de service
-- [ ] Testes de integração dos endpoints
 
-### 3. Cálculo de status do snapshot
-- [ ] `SnapshotStatusService` com a fórmula:
+### Cálculo de status do snapshot (`SnapshotStatusService`) — [spec](snapshot_status_spec.md)
+- [x] Fórmula de média ponderada:
   ```
   peso_final       = confidence_score × peso_temporal
   status_ponderado = status_value × peso_final
   current_status   = Σ(status_ponderado) / Σ(peso_final)
   ```
-  Apenas relatos dentro da janela temporal adaptativa e do `meal_period` vigente.
-- [ ] Testes do `SnapshotStatusService`
-- [ ] Atualização assincrona do snapshot no `QueueReportService` após criação de report usando Background Tasks do FastAPI *(evolui para Celery task depois)*
+- [x] Janela adaptativa: 5 min (≥5 relatos), 10 min (≥3 relatos), 15 min (demais)
+- [x] Pesos temporais: ≤60s → 0.95 / ≤5min → 0.70 / ≤10min → 0.40 / >10min → 0.15
+- [x] `FOOD_ENDED` com lógica de quórum separada: ≥3 relatos em 5 min sobrescreve o cálculo normal
+- [x] `confidence_score` médio persistido no snapshot após cada recálculo
+- [x] Atualização assíncrona via Background Tasks do FastAPI após criação de report *(evolui para Celery task depois)*
+- [x] Testes do `SnapshotStatusService`
 
-### 4. Testes de integração
+---
+
+## 🔲 Pendente — ordenado por prioridade
+
+### 1. Revisões de confidence score
+- [ ] Avaliar novas penalidades após snapshot funcional
+- [ ] Implementar: IP com histórico de relatos inconsistentes
+- [ ] Implementar: Relato inconsistente com histórico recente do RU
+- [ ] Atualizar testes de service para novas penalidades
+
+### 2. Testes de integração
 - [ ] Endpoints de `restaurants.py`
 - [ ] Endpoints de `restaurant_schedules.py`
 - [ ] Endpoints de `restaurant_schedule_exceptions.py`
 - [ ] Endpoints de `queue_reports.py`
-- [ ] Endpoints de `queue_snapshots.py` *(após implementação)*
-
-### 5. Revisões de confidence score
-- [ ] Avaliar novas penalidades após snapshot funcional
-- [ ] Implementar: IP com histórico de relatos inconsistentes
-- [ ] Implementar: Relato inconsistente com histórico recente do RU
+- [ ] Endpoints de `queue_snapshots.py`
 
 ---
 
 ## 🔭 Melhorias futuras (pós-MVP)
 
 ### Refactoring
-- [ ] **Extrair `_get_restaurant_by_public_id_or_error`** — o método privado já está duplicado em `QueueReportService`, `RestaurantScheduleService` e `RestaurantScheduleExceptionService`, e será repetido em `QueueSnapshotService`. Candidato a um `RestaurantResolverMixin` ou função utilitária em `app/services/_utils.py`, recebendo `restaurant_repo` e `public_id` como parâmetros. O teste isolado em `test_get_restaurant_or_error.py` já cobre o comportamento e pode ser reaproveitado.
+- [ ] **Extrair `_get_restaurant_by_public_id_or_error`** — método privado duplicado em `QueueReportService`, `RestaurantScheduleService`, `RestaurantScheduleExceptionService` e `QueueSnapshotService`. Candidato a `RestaurantResolverMixin` ou função utilitária em `app/services/_utils.py`. Teste isolado em `test_get_restaurant_or_error.py` já cobre o comportamento e pode ser reaproveitado.
+
+### Processamento assíncrono
+- [ ] **Celery + Redis Broker** — substituir Background Tasks do FastAPI por Celery para o recálculo do snapshot. Retorno do `POST /reports` passa de `201` para `202 Accepted`
+- [ ] **sqlalchemy-celery-beat** — scheduler dinâmico com schedules persistidos no PostgreSQL
+- [ ] **`close_meal_period_task`** — disparada pelo beat no `closes_at` de cada slot: encerra o período, reseta snapshot para `NO_DATA`, invalida Redis, publica evento WebSocket
+- [ ] **`aggregate_meal_period_task`** — enfileirada por `close_meal_period_task` quando o período teve relatos: processa buckets fixos de 10 min e grava em `queue_aggregates_10m`
+- [ ] **`FOOD_ENDED` override via Redis** — substituir a remoção implícita por janela (comportamento atual) por TTL explícito no Redis: `min(30 min, tempo restante até closes_at)`. Garante expiração precisa independente de novos relatos chegarem
+- [ ] **Job 2 — Cache semanal** — CrontabSchedule aos domingos: lê `queue_aggregates_10m`, aplica `normalize_for_query`, salva no Redis (`analytics:ru:{id}:weekly`, TTL 7 dias)
+- [ ] **Job 3 — Limpeza de dados** — CrontabSchedule às segundas: aplica política de retenção (90 dias para `queue_reports`, 365 dias para `queue_aggregates_10m` e `admin_audit_log`)
 
 ### Observabilidade
-- [ ] **structlog** — substituir o logger padrão por structlog para logs estruturados em JSON, facilitando ingestão em ferramentas de observabilidade
+- [ ] **structlog** — substituir o logger padrão por structlog para logs estruturados em JSON
 - [ ] **Prometheus + Grafana** — expor métricas via `prometheus-fastapi-instrumentator` (`/metrics`) e criar dashboards de latência, taxa de erros e volume de relatos por RU
 
 ### Resiliência
-- [ ] **Timeouts em cascata** — configurar `statement_timeout` no PostgreSQL, `socket_timeout` no Redis, `httpx.Timeout` para clientes externos e `--timeout-keep-alive` no uvicorn. Ver [`docs/timeouts.md`](timeouts.md)
+- [ ] **Timeouts em cascata** — configurar `statement_timeout` no PostgreSQL, `socket_timeout` no Redis, `httpx.Timeout` para clientes externos e `--timeout-keep-alive` no uvicorn
 
 ### Segurança
-- [ ] **HTTP Security Headers** — adicionar middleware com `Strict-Transport-Security`, `X-Frame-Options` e `X-Content-Type-Options` nas respostas. Ver [`docs/security-headers.md`](security-headers.md)
+- [ ] **HTTP Security Headers** — adicionar middleware com `Strict-Transport-Security`, `X-Frame-Options` e `X-Content-Type-Options`
 
 ---
 
@@ -133,3 +142,5 @@
 | Cooldown por IP | 2 min | 2 min (configurável) | Alinhado |
 | Penalidade lat/lng redondo | −0.15 | −0.25 | Escopo atualizado para refletir implementação |
 | `geo_sig_valid` | Campo no banco | Removido | Campo invariante — sempre `true`, sem valor analítico |
+| Recálculo snapshot | Celery task | Background Tasks FastAPI | Bridge para MVP — evolui para Celery na fase de processamento assíncrono |
+| Expiração `FOOD_ENDED` | TTL Redis explícito | Remoção implícita por janela de 5 min | Sem Redis no MVP — expira quando ≥3 relatos FOOD_ENDED saem da janela e chega novo relato. Evolui para TTL Redis com Celery |

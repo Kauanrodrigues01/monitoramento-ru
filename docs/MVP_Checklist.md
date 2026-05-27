@@ -79,7 +79,7 @@
 - [x] Endpoint: `GET /v1/restaurants/status/bulk?ids=uuid1,uuid2,...` (bulk)
 - [x] Possivelmente: criação automática dos snapshots junto com o restaurant (`POST /restaurants`)
 - [x] Testes de schemas
-- [ ] Testes de service
+- [x] Testes de service
 - [ ] Testes de integração dos endpoints
 
 ### 3. Cálculo de status do snapshot

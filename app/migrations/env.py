@@ -9,11 +9,11 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.database import DATABASE_URL
 from app.models.base import Base
-from app.models.restaurant import (
+from app.models.restaurant import (  # noqa: F401
     Restaurant,
     RestaurantSchedule,
     RestaurantScheduleException,
-)  # noqa: F401
+)
 from app.models.queue_reports import QueueReport  # noqa: F401
 from app.models.queue_snapshot import QueueSnapshot  # noqa: F401
 

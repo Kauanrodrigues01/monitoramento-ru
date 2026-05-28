@@ -1,10 +1,15 @@
-from datetime import date, time
+from datetime import UTC, date, datetime, time
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
 from sqlalchemy.exc import IntegrityError
 
+from app.exceptions.meal_period_exceptions import (
+    MealPeriodClosedError,
+    OutsideMealHoursError,
+    RestaurantClosedAllDayError,
+)
 from app.exceptions.restaurant_exceptions import (
     RestaurantNotFoundError,
     RestaurantScheduleExceptionAlreadyExistsError,
@@ -16,6 +21,7 @@ from app.repositories.restaurant_repository import RestaurantRepository
 from app.repositories.restaurant_schedule_exception_repository import (
     RestaurantScheduleExceptionRepository,
 )
+from app.services.meal_period_service import MealPeriodService
 from app.services.restaurant_schedule_exception_service import (
     RestaurantScheduleExceptionService,
 )
@@ -27,6 +33,8 @@ from app.tests.factories.restaurant_schema_factory import (
     build_restaurant_schedule_exception_create_schema,
     build_restaurant_schedule_exception_update_schema,
 )
+
+_AT = datetime(2026, 5, 27, 12, 0, 0, tzinfo=UTC)
 
 
 @pytest.fixture
@@ -42,10 +50,16 @@ def mock_restaurant_repository():
 
 
 @pytest.fixture
-def service(mock_exception_repository, mock_restaurant_repository):
+def mock_meal_period_service():
+    return AsyncMock(spec=MealPeriodService)
+
+
+@pytest.fixture
+def service(mock_exception_repository, mock_restaurant_repository, mock_meal_period_service):
     return RestaurantScheduleExceptionService(
         repo=mock_exception_repository,
         restaurant_repo=mock_restaurant_repository,
+        meal_period_service=mock_meal_period_service,
     )
 
 
@@ -648,3 +662,153 @@ class TestUpdateRestaurantScheduleException:
             )
 
         mock_exception_repository.db_session.rollback.assert_called_once()
+
+
+# ===== GET ACTIVE SCHEDULE EXCEPTION =====
+class TestGetActiveScheduleException:
+    @pytest.mark.asyncio
+    async def test_should_return_whole_day_closed_exception(
+        self, service, mock_exception_repository, mock_restaurant_repository
+    ):
+        restaurant = RestaurantFactory.build()
+        exception = RestaurantScheduleExceptionFactory.build(
+            ru_id=restaurant.id,
+            exception_type=ExceptionTypeEnum.CLOSED,
+            meal_period=None,
+        )
+
+        mock_restaurant_repository.get_by_public_id.return_value = restaurant
+        mock_exception_repository.list_by_ru_id_and_date.return_value = [exception]
+
+        result = await service.get_active_exception(restaurant.public_id, _AT)
+
+        assert result is exception
+        # MealPeriodService não deve ser consultado — o dia inteiro fechado tem prioridade
+        service.meal_period_service.resolve.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_should_return_custom_hours_exception_for_resolved_period(
+        self, service, mock_exception_repository, mock_restaurant_repository, mock_meal_period_service
+    ):
+        restaurant = RestaurantFactory.build()
+        exception = RestaurantScheduleExceptionFactory.build(
+            ru_id=restaurant.id,
+            exception_type=ExceptionTypeEnum.CUSTOM_HOURS,
+            meal_period=MealPeriodEnum.LUNCH,
+            opens_at=time(10, 0),
+            closes_at=time(13, 0),
+        )
+
+        mock_restaurant_repository.get_by_public_id.return_value = restaurant
+        mock_exception_repository.list_by_ru_id_and_date.return_value = [exception]
+        mock_meal_period_service.resolve.return_value = MealPeriodEnum.LUNCH
+
+        result = await service.get_active_exception(restaurant.public_id, _AT)
+
+        assert result is exception
+
+    @pytest.mark.asyncio
+    async def test_should_return_none_when_no_exceptions_today(
+        self, service, mock_exception_repository, mock_restaurant_repository
+    ):
+        restaurant = RestaurantFactory.build()
+
+        mock_restaurant_repository.get_by_public_id.return_value = restaurant
+        mock_exception_repository.list_by_ru_id_and_date.return_value = []
+
+        result = await service.get_active_exception(restaurant.public_id, _AT)
+
+        assert result is None
+        service.meal_period_service.resolve.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_should_return_none_when_outside_meal_hours(
+        self, service, mock_exception_repository, mock_restaurant_repository, mock_meal_period_service
+    ):
+        restaurant = RestaurantFactory.build()
+        exception = RestaurantScheduleExceptionFactory.build(
+            ru_id=restaurant.id,
+            exception_type=ExceptionTypeEnum.CUSTOM_HOURS,
+            meal_period=MealPeriodEnum.LUNCH,
+            opens_at=time(10, 0),
+            closes_at=time(13, 0),
+        )
+
+        mock_restaurant_repository.get_by_public_id.return_value = restaurant
+        mock_exception_repository.list_by_ru_id_and_date.return_value = [exception]
+        mock_meal_period_service.resolve.side_effect = OutsideMealHoursError()
+
+        result = await service.get_active_exception(restaurant.public_id, _AT)
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_should_return_period_specific_closed_exception_on_meal_period_closed_error(
+        self, service, mock_exception_repository, mock_restaurant_repository, mock_meal_period_service
+    ):
+        restaurant = RestaurantFactory.build()
+        exception = RestaurantScheduleExceptionFactory.build(
+            ru_id=restaurant.id,
+            exception_type=ExceptionTypeEnum.CLOSED,
+            meal_period=MealPeriodEnum.LUNCH,
+        )
+
+        mock_restaurant_repository.get_by_public_id.return_value = restaurant
+        mock_exception_repository.list_by_ru_id_and_date.return_value = [exception]
+        mock_meal_period_service.resolve.side_effect = MealPeriodClosedError()
+
+        result = await service.get_active_exception(restaurant.public_id, _AT)
+
+        assert result is exception
+
+    @pytest.mark.asyncio
+    async def test_should_return_none_when_restaurant_closed_all_day_error(
+        self, service, mock_exception_repository, mock_restaurant_repository, mock_meal_period_service
+    ):
+        # RestaurantClosedAllDayError não deveria ocorrer aqui pois o caso de
+        # dia inteiro é tratado antes, mas o catch defensivo deve retornar None
+        restaurant = RestaurantFactory.build()
+        exception = RestaurantScheduleExceptionFactory.build(
+            ru_id=restaurant.id,
+            exception_type=ExceptionTypeEnum.CUSTOM_HOURS,
+            meal_period=MealPeriodEnum.DINNER,
+            opens_at=time(17, 0),
+            closes_at=time(20, 0),
+        )
+
+        mock_restaurant_repository.get_by_public_id.return_value = restaurant
+        mock_exception_repository.list_by_ru_id_and_date.return_value = [exception]
+        mock_meal_period_service.resolve.side_effect = RestaurantClosedAllDayError()
+
+        result = await service.get_active_exception(restaurant.public_id, _AT)
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_should_return_none_when_no_exception_matches_resolved_period(
+        self, service, mock_exception_repository, mock_restaurant_repository, mock_meal_period_service
+    ):
+        restaurant = RestaurantFactory.build()
+        # Há exceção de DINNER, mas o período resolvido é LUNCH
+        dinner_exception = RestaurantScheduleExceptionFactory.build(
+            ru_id=restaurant.id,
+            exception_type=ExceptionTypeEnum.CLOSED,
+            meal_period=MealPeriodEnum.DINNER,
+        )
+
+        mock_restaurant_repository.get_by_public_id.return_value = restaurant
+        mock_exception_repository.list_by_ru_id_and_date.return_value = [dinner_exception]
+        mock_meal_period_service.resolve.return_value = MealPeriodEnum.LUNCH
+
+        result = await service.get_active_exception(restaurant.public_id, _AT)
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_should_raise_not_found_when_restaurant_does_not_exist(
+        self, service, mock_restaurant_repository
+    ):
+        mock_restaurant_repository.get_by_public_id.return_value = None
+
+        with pytest.raises(RestaurantNotFoundError):
+            await service.get_active_exception(uuid4(), _AT)

@@ -191,6 +191,30 @@ class RestaurantSchedule(Base):
 
 
 class RestaurantScheduleException(Base):
+    """Representa uma exceção ao horário regular de um restaurante em uma data específica.
+
+    Casos possíveis:
+
+    1. RU fechado o dia todo (ambos os períodos):
+       exception_type=CLOSED, meal_period=None, opens_at=None, closes_at=None
+       → Garantido único por índice parcial (uq_restaurant_schedule_exception_whole_day).
+
+    2. RU fechado em um período específico:
+       exception_type=CLOSED, meal_period=LUNCH|DINNER, opens_at=None, closes_at=None
+       → Ex.: apenas o jantar cancelado em um feriado com almoço normal.
+
+    3. Horário especial em um período específico:
+       exception_type=CUSTOM_HOURS, meal_period=LUNCH|DINNER, opens_at=HH:MM, closes_at=HH:MM
+       → Ex.: almoço com horário reduzido numa sexta-feira de evento.
+
+    Restrições:
+    - CUSTOM_HOURS exige opens_at e closes_at; CLOSED não pode tê-los.
+    - Um mesmo RU pode ter no máximo uma exceção de dia inteiro (meal_period=None)
+      e uma por período (LUNCH, DINNER) por data — garantido pelos constraints únicos.
+    - Não é possível ter simultaneamente uma exceção de dia inteiro e uma por período
+      na mesma data (seria redundante; o dia inteiro já cobre tudo).
+    """
+
     __tablename__ = "restaurant_schedule_exceptions"
 
     __table_args__ = (

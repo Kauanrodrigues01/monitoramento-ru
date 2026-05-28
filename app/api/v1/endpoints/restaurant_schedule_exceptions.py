@@ -3,6 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
 
+from app.core.datetime_utils import to_app_tz, utc_now
 from app.core.openapi_responses import (
     INTERNAL_SERVER_ERROR_RESPONSE,
     RATE_LIMIT_RESPONSE,
@@ -26,6 +27,7 @@ from app.exceptions.restaurant_exceptions import (
     RestaurantScheduleExceptionNotFoundError,
 )
 from app.schemas.restaurant_schedule_exception_schemas import (
+    ActiveScheduleExceptionResponse,
     RestaurantScheduleExceptionCreate,
     RestaurantScheduleExceptionResponse,
     RestaurantScheduleExceptionUpdate,
@@ -57,6 +59,27 @@ async def create_restaurant_schedule_exception(
     return await service.create_restaurant_schedule_exception(
         restaurant_public_id, data
     )
+
+
+@router.get(
+    "/{restaurant_public_id}/schedule-exceptions/active",
+    response_model=ActiveScheduleExceptionResponse,
+    responses=(
+        error_response(RestaurantNotFoundError)
+        | RATE_LIMIT_RESPONSE
+        | INTERNAL_SERVER_ERROR_RESPONSE
+    ),
+)
+@limiter.limit(READ_RATE_LIMIT)
+async def get_active_schedule_exception(
+    restaurant_public_id: UUID,
+    request: Request,
+    service: RestaurantScheduleExceptionServiceDep,
+):
+    exception = await service.get_active_exception(
+        restaurant_public_id, to_app_tz(utc_now())
+    )
+    return ActiveScheduleExceptionResponse(exception=exception)
 
 
 @router.get(

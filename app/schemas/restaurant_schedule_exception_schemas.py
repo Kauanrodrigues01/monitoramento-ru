@@ -97,3 +97,12 @@ class RestaurantScheduleExceptionResponse(BaseModel):
     reason: str | None = Field(examples=["Feriado nacional"])
     created_at: datetime = Field(examples=[datetime.now(UTC)])
     updated_at: datetime = Field(examples=[datetime.now(UTC)])
+
+
+class ActiveScheduleExceptionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    exception: RestaurantScheduleExceptionResponse | None = Field(
+        description="Exceção de horário vigente para o período atual. Null quando não há exceção ativa.",
+        examples=[None],
+    )

@@ -8,7 +8,12 @@ from app.models.queue_reports import ReportStatusEnum
 from app.models.restaurant import MealPeriodEnum
 
 
-def _truncate_coordinates(value: Decimal) -> Decimal:
+def truncate_coordinate(value: Decimal) -> Decimal:
+    """Trunca lat/lng para 6 casas decimais em direção ao zero (ROUND_DOWN).
+
+    Deve ser chamada APÓS a validação da assinatura geo, pois a truncagem altera
+    o valor e tornaria o payload diferente do que o cliente assinou.
+    """
     return value.quantize(Decimal("0.000001"), rounding=ROUND_DOWN)
 
 
@@ -56,11 +61,6 @@ class QueueReportCreate(BaseModel):
         description="Unix timestamp (segundos desde epoch UTC) de quando a localização GPS foi capturada pelo dispositivo.",
         examples=[1748166600],
     )
-
-    @field_validator("lat", "lng")
-    @classmethod
-    def truncate_coordinates(cls, value: Decimal) -> Decimal:
-        return _truncate_coordinates(value)
 
     @field_validator("geo_signature")
     @classmethod

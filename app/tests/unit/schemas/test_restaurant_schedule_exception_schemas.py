@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from app.models.restaurant import ExceptionTypeEnum, MealPeriodEnum
 from app.schemas.restaurant_schedule_exception_schemas import (
+    ActiveScheduleExceptionResponse,
     RestaurantScheduleExceptionResponse,
 )
 from app.tests.factories.restaurant_schema_factory import (
@@ -441,3 +442,44 @@ class TestRestaurantScheduleExceptionResponseSchema:
             "updated_at",
         }
         assert set(dump.keys()) == expected_fields
+
+
+class TestActiveScheduleExceptionResponseSchema:
+    def test_should_accept_exception_none(self):
+        data = ActiveScheduleExceptionResponse(exception=None)
+
+        assert data.exception is None
+
+    def test_should_accept_exception_with_value(self):
+        payload = _build_exception_response_payload()
+        inner = RestaurantScheduleExceptionResponse(**payload)
+
+        data = ActiveScheduleExceptionResponse(exception=inner)
+
+        assert data.exception is inner
+
+    def test_model_dump_has_only_exception_key(self):
+        data = ActiveScheduleExceptionResponse(exception=None)
+        dump = data.model_dump()
+
+        assert set(dump.keys()) == {"exception"}
+
+    def test_should_validate_from_dict_with_none(self):
+        data = ActiveScheduleExceptionResponse(**{"exception": None})
+
+        assert data.exception is None
+
+    def test_should_validate_from_dict_with_exception_object(self):
+        payload = _build_exception_response_payload(
+            exception_type=ExceptionTypeEnum.CUSTOM_HOURS,
+            opens_at=time(10, 0),
+            closes_at=time(13, 0),
+            meal_period=MealPeriodEnum.LUNCH,
+        )
+        data = ActiveScheduleExceptionResponse(
+            exception=RestaurantScheduleExceptionResponse(**payload)
+        )
+
+        assert data.exception is not None
+        assert data.exception.exception_type == ExceptionTypeEnum.CUSTOM_HOURS
+        assert data.exception.meal_period == MealPeriodEnum.LUNCH

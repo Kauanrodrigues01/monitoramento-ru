@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from app.models.queue_reports import ReportStatusEnum
 from app.models.restaurant import MealPeriodEnum
-from app.schemas.queue_report_schemas import QueueReportResponse
+from app.schemas.queue_report_schemas import QueueReportResponse, truncate_coordinate
 from app.tests.factories.queue_report_schema_factory import (
     build_queue_report_create_schema,
 )
@@ -106,28 +106,34 @@ class TestQueueReportCreateSchema:
 
         assert data.lng == Decimal("-180")
 
-    def test_should_truncate_lat_to_6_decimal_places(self):
+    def test_should_preserve_lat_precision_in_schema(self):
+        # A truncagem foi movida para o service (após validação da assinatura geo).
+        # O schema aceita e preserva a precisão original do cliente.
         data = build_queue_report_create_schema(lat="-3.7473619999")
 
-        assert data.lat == Decimal("-3.747361")
+        assert data.lat == Decimal("-3.7473619999")
 
-    def test_should_truncate_lng_to_6_decimal_places(self):
+    def test_should_preserve_lng_precision_in_schema(self):
         data = build_queue_report_create_schema(lng="-38.5230609999")
 
-        assert data.lng == Decimal("-38.523060")
+        assert data.lng == Decimal("-38.5230609999")
+
+
+class TestTruncateCoordinate:
+    def test_should_truncate_to_6_decimal_places(self):
+        assert truncate_coordinate(Decimal("-3.7473619999")) == Decimal("-3.747361")
 
     def test_should_truncate_positive_using_round_down_not_round(self):
         # 1.9999999 truncado para baixo = 1.999999, não arredondado para 2.000000
-        data = build_queue_report_create_schema(lat="1.9999999")
-
-        assert data.lat == Decimal("1.999999")
+        assert truncate_coordinate(Decimal("1.9999999")) == Decimal("1.999999")
 
     def test_should_truncate_negative_toward_zero_not_away(self):
         # ROUND_DOWN trunca em direção ao zero:
         # -1.9999999 → -1.999999 (em direção ao zero), não -2.000000 (afastando do zero)
-        data = build_queue_report_create_schema(lat="-1.9999999")
+        assert truncate_coordinate(Decimal("-1.9999999")) == Decimal("-1.999999")
 
-        assert data.lat == Decimal("-1.999999")
+    def test_should_preserve_value_already_at_6_decimal_places(self):
+        assert truncate_coordinate(Decimal("-4.215623")) == Decimal("-4.215623")
 
     def test_should_reject_accuracy_m_below_zero(self):
         with pytest.raises(ValidationError):

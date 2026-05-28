@@ -156,7 +156,176 @@ elif distance >= 1.5: score -= 0.15   # divergência moderada
   - Snapshot é passado ao `ConfidenceScoreService`
 - [ ] Atualizar testes de todas as classes que usam `ConfidenceScoreService` para passar `snapshot` como parâmetro
 
-### 2. Refactoring
+### 2. Endpoint de exceção de horário vigente
+
+`GET /v1/restaurants/{public_id}/schedule-exceptions/active`
+
+Verifica se existe uma exceção de horário ativa para o restaurante **hoje** e **no período de refeição corrente** (resolvido pelo `MealPeriodService`). Retorna a exceção encontrada ou `null`.
+
+#### Motivação
+
+O frontend precisa saber — antes de exibir o status da fila — se o RU está operando fora do normal hoje. A informação já existe na tabela `restaurant_schedule_exceptions`, mas o endpoint atual (`GET /schedule-exceptions`) retorna todas as exceções cadastradas, exigindo filtragem no cliente.
+
+#### Contrato de resposta
+
+| Cenário | HTTP | Body |
+|---|---|---|
+| Exceção encontrada | 200 | objeto `ScheduleExceptionResponse` |
+| Nenhuma exceção hoje | 200 | `{ "exception": null }` |
+| Restaurante não encontrado | 404 | `ErrorResponse` |
+| Fora do horário de funcionamento | 200 | `{ "exception": null }` (sem período vigente, sem exceção aplicável) |
+
+**Exemplo — restaurante fechado o dia todo:**
+```json
+{
+  "exception": {
+    "public_id": "...",
+    "exception_type": "CLOSED",
+    "exception_date": "2026-06-12",
+    "meal_period": null,
+    "opens_at": null,
+    "closes_at": null,
+    "reason": "Feriado de Corpus Christi"
+  }
+}
+```
+
+**Exemplo — horário especial no almoço:**
+```json
+{
+  "exception": {
+    "public_id": "...",
+    "exception_type": "CUSTOM_HOURS",
+    "exception_date": "2026-06-12",
+    "meal_period": "LUNCH",
+    "opens_at": "11:30:00",
+    "closes_at": "13:00:00",
+    "reason": null
+  }
+}
+```
+
+**Exemplo — sem exceção:**
+```json
+{ "exception": null }
+```
+
+#### Implementação
+
+- **Schema novo:** `ScheduleExceptionActiveResponse` com campo `exception: ScheduleExceptionResponse | None`
+- **Repositório** (`RestaurantScheduleExceptionRepository`): `get_by_ru_id_and_date` já existe — reutilizar; filtrar pelo `meal_period` resolvido no service
+- **Service** (`RestaurantScheduleExceptionService`): método `get_active_exception(ru_id, at)` que:
+  1. Chama `list_by_ru_id_and_date(ru_id, at.date())`
+  2. Prioriza exceção `CLOSED` sem `meal_period` (dia inteiro)
+  3. Depois procura `CLOSED` ou `CUSTOM_HOURS` com o `meal_period` resolvido pelo `MealPeriodService`
+  4. Se `MealPeriodService` lançar `OutsideMealHoursError` / `RestaurantClosedAllDayError` — retorna `None`
+- **Router** (`restaurant_schedule_exceptions.py`): `GET /{public_id}/schedule-exceptions/active` público, rate limit 60 req/min
+
+#### Testes
+- [x] Retorna exceção `CLOSED` sem `meal_period` quando o dia inteiro está fechado
+- [x] Retorna exceção `CUSTOM_HOURS` para o período correto
+- [x] Retorna `null` quando não há exceção para hoje
+- [x] Retorna `null` quando o horário atual não corresponde a nenhum período de refeição
+- [x] Retorna `404` quando o restaurante não existe
+
+---
+
+### 3. Endpoint de métricas gerais (`/metrics/summary`)
+
+`GET /v1/metrics/summary`
+
+Visão agregada do sistema em tempo real. Voltado para o painel principal do front-end.
+
+#### Contrato de resposta
+
+```json
+{
+  "total_active_restaurants": 3,
+  "open_now": 2,
+  "reports_last_15m": 14,
+  "status_distribution": {
+    "NO_QUEUE": 1,
+    "SMALL": 1,
+    "MEDIUM": 0,
+    "LARGE": 0,
+    "FOOD_ENDED": 0,
+    "NO_DATA": 1
+  },
+  "avg_confidence": 0.87
+}
+```
+
+| Campo | Origem |
+|---|---|
+| `total_active_restaurants` | `COUNT` de `restaurants` com `is_active=true` |
+| `open_now` | Agregação dos snapshots com `meal_period` vigente (reusa lógica do `MealPeriodService`) |
+| `reports_last_15m` | `SUM(reports_last_15m)` dos snapshots do período vigente |
+| `status_distribution` | `COUNT GROUP BY current_status` dos snapshots do período vigente |
+| `avg_confidence` | Média de `confidence_score` dos snapshots com `current_status != NO_DATA` |
+
+#### Implementação
+
+- **Schema:** `MetricsSummaryResponse`
+- **Service:** `MetricsService.get_summary()` — queries diretas ao banco via `QueueSnapshotRepository` e `RestaurantRepository`; sem cache no MVP
+- **Router:** `GET /v1/metrics/summary` — público, rate limit 30 req/min
+- Não requer autenticação — todos os valores são agregados, sem dados individuais
+
+#### Testes
+- [ ] Contagem correta de restaurantes ativos
+- [ ] `open_now` considera apenas restaurantes com período vigente no momento
+- [ ] `reports_last_15m` soma todos os snapshots do período vigente
+- [ ] `status_distribution` agrupa corretamente os status
+- [ ] `avg_confidence` exclui snapshots com `NO_DATA`
+
+---
+
+### 4. Endpoint de métricas por restaurante
+
+`GET /v1/restaurants/{public_id}/metrics`
+
+Dados de atividade do restaurante **no dia corrente**, para exibição na página de detalhe. Permite mostrar como a fila evoluiu ao longo do dia.
+
+#### Contrato de resposta
+
+```json
+{
+  "reports_today": 42,
+  "avg_confidence_today": 0.83,
+  "status_history_today": [
+    { "hour": 11, "meal_period": "LUNCH",  "dominant_status": "SMALL",  "report_count": 5 },
+    { "hour": 12, "meal_period": "LUNCH",  "dominant_status": "LARGE",  "report_count": 12 },
+    { "hour": 13, "meal_period": "LUNCH",  "dominant_status": "MEDIUM", "report_count": 8 },
+    { "hour": 17, "meal_period": "DINNER", "dominant_status": "SMALL",  "report_count": 3 }
+  ]
+}
+```
+
+| Campo | Origem |
+|---|---|
+| `reports_today` | `COUNT` de `queue_reports` com `ru_id` e `created_at` no dia atual (timezone local) |
+| `avg_confidence_today` | Média de `confidence_score` dos relatos de hoje |
+| `status_history_today` | Relatos de hoje agrupados por hora; `dominant_status` = status com maior peso ponderado por confidence na hora |
+
+> `status_history_today` é a base para um gráfico de linha ou sparkline no frontend mostrando a evolução da fila durante o dia.
+
+#### Implementação
+
+- **Schema:** `RestaurantMetricsResponse`, `StatusHistoryEntry`
+- **Repositório** (`QueueReportRepository`): `list_today_by_ru` — query com `created_at BETWEEN day_start AND day_end` (usando `ZoneInfo(APP_TIMEZONE)`, igual ao `list_recent_by_period` já implementado)
+- **Service:** `MetricsService.get_restaurant_metrics(ru_id, day)` — agrupa os relatos por hora em Python; `dominant_status` calculado como moda ponderada por `confidence_score`
+- **Router:** `GET /v1/restaurants/{public_id}/metrics` — público, rate limit 30 req/min
+- Retorna `404` se restaurante não existir; retorna métricas zeradas/vazias se não houver relatos hoje (não é erro)
+
+#### Testes
+- [ ] `reports_today` conta apenas relatos do dia corrente no timezone da aplicação (não UTC)
+- [ ] `avg_confidence_today` é `null` quando não há relatos hoje
+- [ ] `status_history_today` está vazio quando não há relatos
+- [ ] `dominant_status` por hora é o status com maior soma de `confidence_score` na hora
+- [ ] Retorna `404` quando o restaurante não existe
+
+---
+
+### 5. Refactoring
 - [ ] **Extrair `_get_restaurant_by_public_id_or_error`** — método privado duplicado em `QueueReportService`, `RestaurantScheduleService`, `RestaurantScheduleExceptionService` e `QueueSnapshotService`. Candidato a `RestaurantResolverMixin` ou função utilitária em `app/services/_utils.py`. Teste isolado em `test_get_restaurant_or_error.py` já cobre o comportamento.
 - [ ] Atualizar testes necessários após refatoração
 

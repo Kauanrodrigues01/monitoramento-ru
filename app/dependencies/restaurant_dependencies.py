@@ -9,6 +9,7 @@ from app.repositories.restaurant_schedule_exception_repository import (
     RestaurantScheduleExceptionRepository,
 )
 from app.repositories.restaurant_schedule_repository import RestaurantScheduleRepository
+from app.services.meal_period_service import MealPeriodService
 from app.services.restaurant_schedule_exception_service import (
     RestaurantScheduleExceptionService,
 )
@@ -47,8 +48,15 @@ def get_restaurant_schedule_exception_service(
 ) -> RestaurantScheduleExceptionService:
     repo = RestaurantScheduleExceptionRepository(db_session=db_session)
     restaurant_repo = RestaurantRepository(db_session=db_session)
+    schedule_repo = RestaurantScheduleRepository(db_session=db_session)
+    meal_period_service = MealPeriodService(
+        schedule_repo=schedule_repo,
+        schedule_exception_repo=repo,
+    )
     return RestaurantScheduleExceptionService(
-        repo=repo, restaurant_repo=restaurant_repo
+        repo=repo,
+        restaurant_repo=restaurant_repo,
+        meal_period_service=meal_period_service,
     )
 
 

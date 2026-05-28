@@ -16,7 +16,7 @@ from app.models.queue_reports import QueueReport
 from app.models.restaurant import Restaurant
 from app.repositories.queue_report_repository import QueueReportRepository
 from app.repositories.restaurant_repository import RestaurantRepository
-from app.schemas.queue_report_schemas import QueueReportCreate
+from app.schemas.queue_report_schemas import QueueReportCreate, truncate_coordinate
 from app.services.confidence_score_service import ConfidenceScoreService
 from app.services.geo_signature_service import GeoSignatureService
 from app.services.ip_service import IpService
@@ -127,6 +127,9 @@ class QueueReportService:
 
         # Valida a assinatura de geolocalização, garante que veio de um app legítimo.
         # Feito antes do cooldown para não vazar estado do cooldown a requisições ilegítimas.
+        # IMPORTANTE: usa data.lat/lng originais (sem truncagem) — a truncagem ocorre
+        # somente após esta validação para garantir que o payload reconstituído aqui
+        # seja idêntico ao que o cliente assinou com toFixed(6).
         GeoSignatureService.validate(
             lat=data.lat,
             lng=data.lng,
@@ -134,6 +137,13 @@ class QueueReportService:
             geo_timestamp=data.geo_timestamp,
             received_signature=data.geo_signature,
         )
+
+        # Trunca lat/lng para 6 casas decimais (ROUND_DOWN) para armazenamento
+        # consistente. Só feito aqui, após a validação da assinatura.
+        data = data.model_copy(update={
+            "lat": truncate_coordinate(data.lat),
+            "lng": truncate_coordinate(data.lng),
+        })
 
         if not unknown_ip:
             recent_report = await self.repo.get_last_by_ip_hash_within_minutes(

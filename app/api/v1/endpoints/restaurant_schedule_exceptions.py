@@ -62,7 +62,24 @@ async def create_restaurant_schedule_exception(
 
 
 @router.get(
-    "/{restaurant_public_id}/schedule-exceptions/active",
+    "/{restaurant_public_id}/schedule-exceptions/current",
+    summary="Retorna a exceção de horário em vigor no momento atual",
+    description=(
+        "Verifica se existe uma exceção de horário **em vigor agora** para o restaurante "
+        "informado, considerando a data e o período de refeição atuais (calculados no horário "
+        "de Brasília no momento da requisição).\n\n"
+        "**Atenção:** 'active' aqui significa *em efeito neste instante*, não um campo de "
+        "status do registro. O resultado muda conforme o horário do dia.\n\n"
+        "**Casos possíveis:**\n"
+        '- Retorna `{"exception": null}` quando não há exceção em vigor (comportamento normal '
+        "do restaurante).\n"
+        '- Retorna `{"exception": {...}}` com `exception_type = CLOSED` quando o restaurante '
+        "está fechado por exceção (dia inteiro ou para o período de refeição atual).\n"
+        '- Retorna `{"exception": {...}}` com `exception_type = CUSTOM_HOURS` quando o '
+        "restaurante opera em horário diferente do padrão para o período atual.\n\n"
+        "O endpoint **sempre retorna 200**; nunca retorna 404 quando a exceção não existe — "
+        "use `exception: null` para detectar ausência."
+    ),
     response_model=ActiveScheduleExceptionResponse,
     responses=(
         error_response(RestaurantNotFoundError)
@@ -71,7 +88,7 @@ async def create_restaurant_schedule_exception(
     ),
 )
 @limiter.limit(READ_RATE_LIMIT)
-async def get_active_schedule_exception(
+async def get_current_schedule_exception(
     restaurant_public_id: UUID,
     request: Request,
     service: RestaurantScheduleExceptionServiceDep,

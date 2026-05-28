@@ -24,6 +24,8 @@ def _build_response_payload(**kwargs) -> dict:
         "reports_last_15m": 0,
         "last_report_at": None,
         "updated_at": datetime(2026, 5, 26, 11, 45, 0),
+        "confidence_score": 1.0,
+        "data_freshness_minutes": None,
     }
     data.update(kwargs)
     return data
@@ -113,6 +115,7 @@ class TestQueueSnapshotBulkItemSchema:
                 reports_last_15m=0,
                 last_report_at=None,
                 updated_at=datetime(2026, 5, 26, 11, 45, 0),
+                confidence_score=1.0,
             )
 
     def test_should_reject_when_meal_period_is_missing(self):
@@ -157,6 +160,7 @@ class TestQueueSnapshotBulkItemSchema:
                 current_status=SnapshotStatusEnum.NO_DATA,
                 reports_last_15m=0,
                 updated_at=datetime(2026, 5, 26, 11, 45, 0),
+                confidence_score=1.0,
             )
 
     def test_should_parse_restaurant_public_id_from_string(self):
@@ -176,8 +180,25 @@ class TestQueueSnapshotBulkItemSchema:
             "reports_last_15m",
             "last_report_at",
             "updated_at",
+            "confidence_score",
         }
         assert set(data.model_dump().keys()) == expected_fields
+
+    def test_should_preserve_confidence_score(self):
+        data = build_queue_snapshot_bulk_item(confidence_score=0.75)
+
+        assert data.confidence_score == 0.75
+
+    def test_should_reject_when_confidence_score_is_missing(self):
+        with pytest.raises(ValidationError):
+            QueueSnapshotBulkItem(
+                restaurant_public_id=uuid4(),
+                meal_period=MealPeriodEnum.LUNCH,
+                current_status=SnapshotStatusEnum.NO_DATA,
+                reports_last_15m=0,
+                last_report_at=None,
+                updated_at=datetime(2026, 5, 26, 11, 45, 0),
+            )
 
 
 class TestQueueSnapshotResponseSchema:
@@ -268,16 +289,32 @@ class TestQueueSnapshotResponseSchema:
             "reports_last_15m",
             "last_report_at",
             "updated_at",
+            "confidence_score",
+            "data_freshness_minutes",
         }
         assert set(data.model_dump().keys()) == expected_fields
 
-    def test_should_not_expose_confidence_score(self):
-        payload = _build_response_payload()
-        payload["confidence_score"] = "0.95"
+    def test_should_preserve_confidence_score(self):
+        payload = _build_response_payload(confidence_score=0.65)
 
         data = QueueSnapshotResponse(**payload)
 
-        assert "confidence_score" not in data.model_dump()
+        assert data.confidence_score == 0.65
+
+    def test_should_reject_when_confidence_score_is_missing(self):
+        payload = _build_response_payload()
+        del payload["confidence_score"]
+
+        with pytest.raises(ValidationError):
+            QueueSnapshotResponse(**payload)
+
+    def test_should_expose_confidence_score_in_dump(self):
+        payload = _build_response_payload(confidence_score=0.95)
+
+        data = QueueSnapshotResponse(**payload)
+
+        assert "confidence_score" in data.model_dump()
+        assert data.model_dump()["confidence_score"] == 0.95
 
     def test_should_not_expose_override_active(self):
         payload = _build_response_payload()
@@ -321,3 +358,29 @@ class TestQueueSnapshotResponseSchema:
         data = QueueSnapshotResponse(**payload)
 
         assert data.updated_at == expected
+
+    def test_should_accept_data_freshness_minutes_as_none(self):
+        payload = _build_response_payload(data_freshness_minutes=None)
+
+        data = QueueSnapshotResponse(**payload)
+
+        assert data.data_freshness_minutes is None
+
+    def test_should_preserve_data_freshness_minutes_as_integer(self):
+        payload = _build_response_payload(data_freshness_minutes=42)
+
+        data = QueueSnapshotResponse(**payload)
+
+        assert data.data_freshness_minutes == 42
+
+    def test_should_reject_when_data_freshness_minutes_is_missing(self):
+        payload = _build_response_payload()
+        del payload["data_freshness_minutes"]
+
+        with pytest.raises(ValidationError):
+            QueueSnapshotResponse(**payload)
+
+    def test_should_not_expose_data_freshness_minutes_in_bulk_item(self):
+        data = build_queue_snapshot_bulk_item()
+
+        assert "data_freshness_minutes" not in data.model_dump()

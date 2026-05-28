@@ -158,9 +158,11 @@ elif distance >= 1.5: score -= 0.15   # divergência moderada
 
 ### 2. Endpoint de exceção de horário vigente
 
-`GET /v1/restaurants/{public_id}/schedule-exceptions/active`
+`GET /v1/restaurants/{public_id}/schedule-exceptions/current`
 
-Verifica se existe uma exceção de horário ativa para o restaurante **hoje** e **no período de refeição corrente** (resolvido pelo `MealPeriodService`). Retorna a exceção encontrada ou `null`.
+Verifica se existe uma exceção de horário em vigor para o restaurante **hoje** e **no período de refeição corrente** (resolvido pelo `MealPeriodService`). Retorna a exceção encontrada ou `null`.
+
+> **Nota sobre o path:** o segmento é `/current` (não `/active`). "Active" em REST remete a um campo `is_active` de registro; "current" indica o que está em vigor neste momento.
 
 #### Motivação
 
@@ -219,7 +221,7 @@ O frontend precisa saber — antes de exibir o status da fila — se o RU está 
   2. Prioriza exceção `CLOSED` sem `meal_period` (dia inteiro)
   3. Depois procura `CLOSED` ou `CUSTOM_HOURS` com o `meal_period` resolvido pelo `MealPeriodService`
   4. Se `MealPeriodService` lançar `OutsideMealHoursError` / `RestaurantClosedAllDayError` — retorna `None`
-- **Router** (`restaurant_schedule_exceptions.py`): `GET /{public_id}/schedule-exceptions/active` público, rate limit 60 req/min
+- **Router** (`restaurant_schedule_exceptions.py`): `GET /{public_id}/schedule-exceptions/current` público, rate limit 60 req/min
 
 #### Testes
 - [x] Retorna exceção `CLOSED` sem `meal_period` quando o dia inteiro está fechado

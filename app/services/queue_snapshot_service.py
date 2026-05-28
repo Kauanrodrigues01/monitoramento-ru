@@ -12,11 +12,13 @@ from app.exceptions.queue_snapshot_exceptions import (
     QueueSnapshotNotFoundError,
 )
 from app.exceptions.restaurant_exceptions import RestaurantNotFoundError
-from app.models.queue_snapshot import QueueSnapshot
 from app.models.restaurant import MealPeriodEnum, Restaurant
 from app.repositories.queue_snapshot_repository import QueueSnapshotRepository
 from app.repositories.restaurant_repository import RestaurantRepository
-from app.schemas.queue_snapshot_schemas import QueueSnapshotBulkItem
+from app.schemas.queue_snapshot_schemas import (
+    QueueSnapshotBulkItem,
+    QueueSnapshotResponse,
+)
 from app.services.meal_period_service import MealPeriodService
 
 logger = get_logger(__name__)
@@ -46,7 +48,7 @@ class QueueSnapshotService:
 
         return restaurant
 
-    async def get_status(self, restaurant_public_id: UUID) -> QueueSnapshot:
+    async def get_status(self, restaurant_public_id: UUID) -> QueueSnapshotResponse:
         restaurant = await self._get_restaurant_by_public_id_or_error(
             restaurant_public_id
         )
@@ -67,7 +69,22 @@ class QueueSnapshotService:
             )
             raise QueueSnapshotNotFoundError()
 
-        return snapshot
+        freshness_min: int | None = None
+        if snapshot.last_report_at is not None:
+            freshness_min = max(
+                0,
+                round((utc_now() - snapshot.last_report_at).total_seconds() / 60),
+            )
+
+        return QueueSnapshotResponse(
+            meal_period=snapshot.meal_period,
+            current_status=snapshot.current_status,
+            reports_last_15m=snapshot.reports_last_15m,
+            last_report_at=snapshot.last_report_at,
+            updated_at=snapshot.updated_at,
+            confidence_score=snapshot.confidence_score,
+            data_freshness_minutes=freshness_min,
+        )
 
     async def get_bulk_status(
         self, public_ids: list[UUID]
@@ -128,6 +145,7 @@ class QueueSnapshotService:
                         reports_last_15m=snapshot.reports_last_15m,
                         last_report_at=snapshot.last_report_at,
                         updated_at=snapshot.updated_at,
+                        confidence_score=snapshot.confidence_score,
                     )
                 )
 

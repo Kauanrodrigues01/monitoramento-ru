@@ -14,6 +14,7 @@ def build_queue_snapshot_bulk_item(**kwargs) -> QueueSnapshotBulkItem:
         "reports_last_15m": 0,
         "last_report_at": None,
         "updated_at": datetime(2026, 5, 26, 11, 45, 0, tzinfo=UTC),
+        "confidence_score": 1.0,
     }
     data.update(kwargs)
     return QueueSnapshotBulkItem(**data)

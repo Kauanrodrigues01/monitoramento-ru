@@ -10,7 +10,7 @@ O snapshot de cada restaurante é recalculado ao final via SnapshotStatusService
 
 import asyncio
 import random
-from datetime import UTC, timedelta
+from datetime import timedelta
 from decimal import Decimal
 from uuid import uuid4
 
@@ -19,7 +19,7 @@ from sqlalchemy import select
 from app.core.database import AsyncSessionLocal
 from app.core.datetime_utils import to_app_tz, utc_now
 from app.models.queue_reports import QueueReport, ReportStatusEnum
-from app.models.queue_snapshot import QueueSnapshot, SnapshotStatusEnum
+from app.models.queue_snapshot import QueueSnapshot
 from app.models.restaurant import MealPeriodEnum, Restaurant
 from app.services.ip_service import IpService
 
@@ -31,9 +31,9 @@ REPORTS_PER_RU_PER_PERIOD = 8
 # Distribuição de status (peso relativo)
 STATUS_WEIGHTS = {
     ReportStatusEnum.NO_QUEUE: 1,
-    ReportStatusEnum.SMALL:    3,
-    ReportStatusEnum.MEDIUM:   3,
-    ReportStatusEnum.LARGE:    2,
+    ReportStatusEnum.SMALL: 3,
+    ReportStatusEnum.MEDIUM: 3,
+    ReportStatusEnum.LARGE: 2,
     ReportStatusEnum.FOOD_ENDED: 1,
 }
 
@@ -58,6 +58,7 @@ def _near_coords(lat: float, lng: float, radius_m: int) -> tuple[Decimal, Decima
     delta = (radius_m * 0.000009) * random.uniform(0.0, 0.85)
     angle = random.uniform(0, 360)
     import math
+
     dlat = delta * math.cos(math.radians(angle))
     dlng = delta * math.sin(math.radians(angle))
     return Decimal(str(round(lat + dlat, 6))), Decimal(str(round(lng + dlng, 6)))
@@ -68,9 +69,15 @@ async def seed_reports() -> None:
         now_utc = utc_now()
         now_local = to_app_tz(now_utc)
 
-        restaurants = (await session.execute(
-            select(Restaurant).where(Restaurant.is_active == True)  # noqa: E712
-        )).scalars().all()
+        restaurants = (
+            (
+                await session.execute(
+                    select(Restaurant).where(Restaurant.is_active == True)  # noqa: E712
+                )
+            )
+            .scalars()
+            .all()
+        )
 
         if not restaurants:
             print("Nenhum restaurante encontrado. Execute seed.py primeiro.")
@@ -90,9 +97,13 @@ async def seed_reports() -> None:
                     created_at = now_utc - timedelta(seconds=seconds_ago)
 
                     status = _weighted_status()
-                    lat, lng = _near_coords(ru_lat, ru_lng, restaurant.geofence_radius_m)
+                    lat, lng = _near_coords(
+                        ru_lat, ru_lng, restaurant.geofence_radius_m
+                    )
                     accuracy_m = Decimal(str(round(random.uniform(5.0, 30.0), 2)))
-                    confidence_score = Decimal(str(round(random.uniform(0.70, 1.00), 2)))
+                    confidence_score = Decimal(
+                        str(round(random.uniform(0.70, 1.00), 2))
+                    )
 
                     report = QueueReport(
                         public_id=uuid4(),
@@ -133,22 +144,28 @@ async def seed_reports() -> None:
 
                 # Busca relatos dos últimos 15min desse período
                 cutoff = now_utc - timedelta(minutes=15)
-                recent = (await session.execute(
-                    select(QueueReport).where(
-                        QueueReport.ru_id == restaurant.id,
-                        QueueReport.meal_period == meal_period,
-                        QueueReport.created_at >= cutoff,
-                    ).order_by(QueueReport.created_at.desc())
-                )).scalars().all()
+                recent = (
+                    (
+                        await session.execute(
+                            select(QueueReport)
+                            .where(
+                                QueueReport.ru_id == restaurant.id,
+                                QueueReport.meal_period == meal_period,
+                                QueueReport.created_at >= cutoff,
+                            )
+                            .order_by(QueueReport.created_at.desc())
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
 
                 if not recent:
                     continue
 
                 # Calcula status simples: média ponderada por confidence
                 from app.services.snapshot_status_service import (
-                    STATUS_MAP_VALUE,
                     SnapshotStatusService,
-                    _VALUE_STATUS_MAP,
                 )
 
                 # Reutiliza a lógica pura _compute_status sem instanciar o serviço completo
@@ -168,7 +185,9 @@ async def seed_reports() -> None:
             f"\nSeed dev concluído: {reports_created} relato(s) criado(s), "
             f"{snapshots_updated} snapshot(s) recalculado(s)."
         )
-        print(f"Horário local de referência: {now_local.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+        print(
+            f"Horário local de referência: {now_local.strftime('%Y-%m-%d %H:%M:%S %Z')}"
+        )
 
 
 if __name__ == "__main__":

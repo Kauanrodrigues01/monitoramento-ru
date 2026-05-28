@@ -1,5 +1,6 @@
-from datetime import datetime
-from unittest.mock import AsyncMock
+from datetime import UTC, datetime
+from decimal import Decimal
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
@@ -18,6 +19,7 @@ from app.models.queue_snapshot import QueueSnapshot, SnapshotStatusEnum
 from app.models.restaurant import MealPeriodEnum
 from app.repositories.queue_snapshot_repository import QueueSnapshotRepository
 from app.repositories.restaurant_repository import RestaurantRepository
+from app.schemas.queue_snapshot_schemas import QueueSnapshotResponse
 from app.services.meal_period_service import MealPeriodService
 from app.services.queue_snapshot_service import BULK_LIMIT, QueueSnapshotService
 from app.tests.factories.restaurant_model_factory import RestaurantFactory
@@ -30,6 +32,7 @@ def _make_snapshot(
     reports_last_15m: int = 0,
     last_report_at: datetime | None = None,
     updated_at: datetime | None = None,
+    confidence_score: Decimal = Decimal("1.00"),
 ) -> QueueSnapshot:
     snapshot = QueueSnapshot()
     snapshot.ru_id = ru_id
@@ -38,6 +41,7 @@ def _make_snapshot(
     snapshot.reports_last_15m = reports_last_15m
     snapshot.last_report_at = last_report_at
     snapshot.updated_at = updated_at or datetime(2026, 5, 26, 12, 0, 0)
+    snapshot.confidence_score = confidence_score
     return snapshot
 
 
@@ -68,18 +72,78 @@ def service(mock_repo, mock_restaurant_repo, mock_meal_period_service):
 # ===== GET STATUS =====
 class TestGetStatus:
     @pytest.mark.asyncio
-    async def test_should_return_snapshot_when_found(
+    async def test_should_return_response_schema_when_found(
         self, service, mock_repo, mock_restaurant_repo, mock_meal_period_service
     ):
         restaurant = RestaurantFactory.build(id=1)
-        snapshot = _make_snapshot(ru_id=1, meal_period=MealPeriodEnum.LUNCH)
+        snapshot = _make_snapshot(
+            ru_id=1,
+            meal_period=MealPeriodEnum.LUNCH,
+            current_status=SnapshotStatusEnum.SMALL,
+            reports_last_15m=3,
+        )
         mock_restaurant_repo.get_by_public_id.return_value = restaurant
         mock_meal_period_service.resolve.return_value = MealPeriodEnum.LUNCH
         mock_repo.get_by_ru_id_and_meal_period.return_value = snapshot
 
         result = await service.get_status(restaurant.public_id)
 
-        assert result is snapshot
+        assert isinstance(result, QueueSnapshotResponse)
+        assert result.meal_period == MealPeriodEnum.LUNCH
+        assert result.current_status == SnapshotStatusEnum.SMALL
+        assert result.reports_last_15m == 3
+
+    @pytest.mark.asyncio
+    async def test_should_return_none_data_freshness_when_no_last_report(
+        self, service, mock_repo, mock_restaurant_repo, mock_meal_period_service
+    ):
+        restaurant = RestaurantFactory.build(id=1)
+        snapshot = _make_snapshot(ru_id=1, last_report_at=None)
+        mock_restaurant_repo.get_by_public_id.return_value = restaurant
+        mock_meal_period_service.resolve.return_value = MealPeriodEnum.LUNCH
+        mock_repo.get_by_ru_id_and_meal_period.return_value = snapshot
+
+        result = await service.get_status(restaurant.public_id)
+
+        assert result.data_freshness_minutes is None
+
+    @pytest.mark.asyncio
+    async def test_should_calculate_data_freshness_minutes_from_last_report(
+        self, service, mock_repo, mock_restaurant_repo, mock_meal_period_service
+    ):
+        restaurant = RestaurantFactory.build(id=1)
+        fixed_now = datetime(2026, 5, 26, 12, 10, 0, tzinfo=UTC)
+        last_report = datetime(2026, 5, 26, 12, 0, 0, tzinfo=UTC)
+        snapshot = _make_snapshot(ru_id=1, last_report_at=last_report)
+        mock_restaurant_repo.get_by_public_id.return_value = restaurant
+        mock_meal_period_service.resolve.return_value = MealPeriodEnum.LUNCH
+        mock_repo.get_by_ru_id_and_meal_period.return_value = snapshot
+
+        with patch(
+            "app.services.queue_snapshot_service.utc_now", return_value=fixed_now
+        ):
+            result = await service.get_status(restaurant.public_id)
+
+        assert result.data_freshness_minutes == 10
+
+    @pytest.mark.asyncio
+    async def test_should_clamp_data_freshness_minutes_to_zero_on_clock_skew(
+        self, service, mock_repo, mock_restaurant_repo, mock_meal_period_service
+    ):
+        restaurant = RestaurantFactory.build(id=1)
+        fixed_now = datetime(2026, 5, 26, 12, 0, 0, tzinfo=UTC)
+        future_report = datetime(2026, 5, 26, 12, 5, 0, tzinfo=UTC)
+        snapshot = _make_snapshot(ru_id=1, last_report_at=future_report)
+        mock_restaurant_repo.get_by_public_id.return_value = restaurant
+        mock_meal_period_service.resolve.return_value = MealPeriodEnum.LUNCH
+        mock_repo.get_by_ru_id_and_meal_period.return_value = snapshot
+
+        with patch(
+            "app.services.queue_snapshot_service.utc_now", return_value=fixed_now
+        ):
+            result = await service.get_status(restaurant.public_id)
+
+        assert result.data_freshness_minutes == 0
 
     @pytest.mark.asyncio
     async def test_should_raise_restaurant_not_found(

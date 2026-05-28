@@ -30,9 +30,11 @@ class QueueSnapshotBulkItem(BaseModel):
         description="Período de refeição ativo no momento da consulta.",
         examples=[MealPeriodEnum.LUNCH.value],
     )
-    current_status: SnapshotStatusEnum = Field(
-        description="Status atual da fila do restaurante.",
-        examples=[SnapshotStatusEnum.NO_DATA.value],
+    current_status: SnapshotStatusEnum = (
+        Field(
+            description="Status atual da fila do restaurante.",
+            examples=[SnapshotStatusEnum.NO_DATA.value],
+        ),
     )
     reports_last_15m: int = Field(
         description="Número de relatos recebidos nos últimos 15 minutos.",
@@ -45,6 +47,10 @@ class QueueSnapshotBulkItem(BaseModel):
     updated_at: datetime = Field(
         description="Data e hora da última atualização do snapshot.",
         examples=[datetime(2026, 5, 26, 11, 45, 0, tzinfo=UTC)],
+    )
+    confidence_score: float = Field(
+        description="Pontuação de confiança do status calculado (0.05–1.00).",
+        examples=[0.85],
     )
 
 
@@ -70,4 +76,12 @@ class QueueSnapshotResponse(BaseModel):
     updated_at: datetime = Field(
         description="Data e hora da última atualização do snapshot.",
         examples=[datetime(2026, 5, 26, 11, 45, 0, tzinfo=UTC)],
+    )
+    confidence_score: float = Field(
+        description="Pontuação de confiança do status calculado (0.05–1.00).",
+        examples=[0.85],
+    )
+    data_freshness_minutes: int | None = Field(
+        description="Minutos desde o último relato. None quando não há relatos.",
+        examples=[12],
     )

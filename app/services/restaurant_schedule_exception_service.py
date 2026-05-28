@@ -103,7 +103,9 @@ class RestaurantScheduleExceptionService:
            - MealPeriodClosedError → retorna a exceção CLOSED do período
         3. Exceção (CLOSED ou CUSTOM_HOURS) que bate com o meal_period resolvido.
         """
-        restaurant = await self._get_restaurant_by_public_id_or_error(restaurant_public_id)
+        restaurant = await self._get_restaurant_by_public_id_or_error(
+            restaurant_public_id
+        )
         exceptions = await self.repo.list_by_ru_id_and_date(restaurant.id, at.date())
 
         if not exceptions:
@@ -111,8 +113,10 @@ class RestaurantScheduleExceptionService:
 
         whole_day = next(
             (
-                e for e in exceptions
-                if e.meal_period is None and e.exception_type == ExceptionTypeEnum.CLOSED
+                e
+                for e in exceptions
+                if e.meal_period is None
+                and e.exception_type == ExceptionTypeEnum.CLOSED
             ),
             None,
         )
@@ -129,7 +133,8 @@ class RestaurantScheduleExceptionService:
             # só há uma por período por data (garantido pelo constraint único).
             return next(
                 (
-                    e for e in exceptions
+                    e
+                    for e in exceptions
                     if e.exception_type == ExceptionTypeEnum.CLOSED
                     and e.meal_period is not None
                 ),

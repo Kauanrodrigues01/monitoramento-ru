@@ -1,8 +1,7 @@
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
-import pytest
 from freezegun import freeze_time
 
 from app.core.datetime_utils import to_app_tz, utc_now

@@ -1,4 +1,3 @@
-import logging
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import AsyncMock
@@ -325,13 +324,15 @@ class TestComputeStatus:
             _make_report(status=ReportStatusEnum.NO_QUEUE, seconds_ago=360),  # 6min
             _make_report(status=ReportStatusEnum.NO_QUEUE, seconds_ago=480),  # 8min
             _make_report(status=ReportStatusEnum.NO_QUEUE, seconds_ago=540),  # 9min
-            _make_report(status=ReportStatusEnum.LARGE, seconds_ago=720),     # 12min
+            _make_report(status=ReportStatusEnum.LARGE, seconds_ago=720),  # 12min
         ]
         status, _ = service._compute_status(reports)
         assert status == SnapshotStatusEnum.NO_QUEUE
 
     @freeze_time(_NOW)
-    def test_confidence_for_single_report_equals_its_own_confidence_score(self, service):
+    def test_confidence_for_single_report_equals_its_own_confidence_score(
+        self, service
+    ):
         reports = [
             _make_report(
                 status=ReportStatusEnum.SMALL,
@@ -433,7 +434,10 @@ class TestCalculateSnapshotStatus:
     ):
         reports = [_make_report(status=ReportStatusEnum.LARGE, seconds_ago=30)]
         self._setup_context(
-            mock_restaurant_repo, mock_meal_period_service, mock_report_repo, reports=reports
+            mock_restaurant_repo,
+            mock_meal_period_service,
+            mock_report_repo,
+            reports=reports,
         )
         result = await service.calculate_snapshot_status(1)
         assert result == SnapshotStatusEnum.LARGE

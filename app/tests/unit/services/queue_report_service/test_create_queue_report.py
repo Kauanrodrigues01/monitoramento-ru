@@ -115,6 +115,7 @@ class TestCreateQueueReport_HappyPath:
             )
 
         from app.core.datetime_utils import to_app_tz
+
         expected_at = to_app_tz(datetime.fromtimestamp(_GEO_TIMESTAMP, tz=UTC))
         mock_meal_period_service.resolve.assert_called_once_with(
             ru_id=restaurant.id,
@@ -358,7 +359,10 @@ class TestCreateQueueReport_Cooldown:
             patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
         ):
             await service.create_queue_report(
-                restaurant.public_id, valid_payload, ip=None, background_tasks=background_tasks
+                restaurant.public_id,
+                valid_payload,
+                ip=None,
+                background_tasks=background_tasks,
             )
 
         mock_repo.get_last_by_ip_hash_within_minutes.assert_not_called()
@@ -488,7 +492,10 @@ class TestCreateQueueReport_Cooldown:
             patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
         ):
             await service.create_queue_report(
-                restaurant.public_id, valid_payload, ip=None, background_tasks=background_tasks
+                restaurant.public_id,
+                valid_payload,
+                ip=None,
+                background_tasks=background_tasks,
             )
 
         created: QueueReport = mock_repo.create.call_args[0][0]
@@ -607,6 +614,7 @@ class TestCreateQueueReport_MealPeriod:
             )
 
         from app.core.datetime_utils import to_app_tz
+
         mock_meal_period_service.resolve.assert_called_once_with(
             ru_id=restaurant.id,
             at=to_app_tz(datetime.fromtimestamp(_GEO_TIMESTAMP, tz=UTC)),
@@ -770,7 +778,8 @@ class TestCreateQueueReport_Geofence:
         with (
             patch(_PATCH_GEO_SIG),
             patch(
-                _PATCH_HAVERSINE, return_value=float(restaurant.geofence_radius_m) + 9999
+                _PATCH_HAVERSINE,
+                return_value=float(restaurant.geofence_radius_m) + 9999,
             ),
             patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
             patch(_PATCH_SETTINGS) as mock_settings,

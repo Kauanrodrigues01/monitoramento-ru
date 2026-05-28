@@ -140,10 +140,12 @@ class QueueReportService:
 
         # Trunca lat/lng para 6 casas decimais (ROUND_DOWN) para armazenamento
         # consistente. Só feito aqui, após a validação da assinatura.
-        data = data.model_copy(update={
-            "lat": truncate_coordinate(data.lat),
-            "lng": truncate_coordinate(data.lng),
-        })
+        data = data.model_copy(
+            update={
+                "lat": truncate_coordinate(data.lat),
+                "lng": truncate_coordinate(data.lng),
+            }
+        )
 
         if not unknown_ip:
             recent_report = await self.repo.get_last_by_ip_hash_within_minutes(
@@ -219,7 +221,9 @@ class QueueReportService:
             await self.snapshot_status_service.update_snapshot(ru_id)
         except Exception:
             logger.warning(
-                "Falha ao atualizar snapshot em background: ru_id=%s", ru_id, exc_info=True
+                "Falha ao atualizar snapshot em background: ru_id=%s",
+                ru_id,
+                exc_info=True,
             )
 
     async def list_recent_queue_reports(

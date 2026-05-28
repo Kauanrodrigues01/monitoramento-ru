@@ -78,4 +78,6 @@ class QueueReportResponse(BaseModel):
     public_id: UUID = Field(examples=[str(uuid4())])
     status: ReportStatusEnum = Field(examples=[ReportStatusEnum.SMALL.value])
     meal_period: MealPeriodEnum = Field(examples=[MealPeriodEnum.LUNCH.value])
-    created_at: datetime = Field(examples=[datetime(2026, 5, 25, 10, 30, 0, tzinfo=UTC)])
+    created_at: datetime = Field(
+        examples=[datetime(2026, 5, 25, 10, 30, 0, tzinfo=UTC)]
+    )

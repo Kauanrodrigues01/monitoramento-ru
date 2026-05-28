@@ -55,7 +55,9 @@ def mock_meal_period_service():
 
 
 @pytest.fixture
-def service(mock_exception_repository, mock_restaurant_repository, mock_meal_period_service):
+def service(
+    mock_exception_repository, mock_restaurant_repository, mock_meal_period_service
+):
     return RestaurantScheduleExceptionService(
         repo=mock_exception_repository,
         restaurant_repo=mock_restaurant_repository,
@@ -688,7 +690,11 @@ class TestGetActiveScheduleException:
 
     @pytest.mark.asyncio
     async def test_should_return_custom_hours_exception_for_resolved_period(
-        self, service, mock_exception_repository, mock_restaurant_repository, mock_meal_period_service
+        self,
+        service,
+        mock_exception_repository,
+        mock_restaurant_repository,
+        mock_meal_period_service,
     ):
         restaurant = RestaurantFactory.build()
         exception = RestaurantScheduleExceptionFactory.build(
@@ -723,7 +729,11 @@ class TestGetActiveScheduleException:
 
     @pytest.mark.asyncio
     async def test_should_return_none_when_outside_meal_hours(
-        self, service, mock_exception_repository, mock_restaurant_repository, mock_meal_period_service
+        self,
+        service,
+        mock_exception_repository,
+        mock_restaurant_repository,
+        mock_meal_period_service,
     ):
         restaurant = RestaurantFactory.build()
         exception = RestaurantScheduleExceptionFactory.build(
@@ -744,7 +754,11 @@ class TestGetActiveScheduleException:
 
     @pytest.mark.asyncio
     async def test_should_return_period_specific_closed_exception_on_meal_period_closed_error(
-        self, service, mock_exception_repository, mock_restaurant_repository, mock_meal_period_service
+        self,
+        service,
+        mock_exception_repository,
+        mock_restaurant_repository,
+        mock_meal_period_service,
     ):
         restaurant = RestaurantFactory.build()
         exception = RestaurantScheduleExceptionFactory.build(
@@ -763,7 +777,11 @@ class TestGetActiveScheduleException:
 
     @pytest.mark.asyncio
     async def test_should_return_none_when_restaurant_closed_all_day_error(
-        self, service, mock_exception_repository, mock_restaurant_repository, mock_meal_period_service
+        self,
+        service,
+        mock_exception_repository,
+        mock_restaurant_repository,
+        mock_meal_period_service,
     ):
         # RestaurantClosedAllDayError não deveria ocorrer aqui pois o caso de
         # dia inteiro é tratado antes, mas o catch defensivo deve retornar None
@@ -786,7 +804,11 @@ class TestGetActiveScheduleException:
 
     @pytest.mark.asyncio
     async def test_should_return_none_when_no_exception_matches_resolved_period(
-        self, service, mock_exception_repository, mock_restaurant_repository, mock_meal_period_service
+        self,
+        service,
+        mock_exception_repository,
+        mock_restaurant_repository,
+        mock_meal_period_service,
     ):
         restaurant = RestaurantFactory.build()
         # Há exceção de DINNER, mas o período resolvido é LUNCH
@@ -797,7 +819,9 @@ class TestGetActiveScheduleException:
         )
 
         mock_restaurant_repository.get_by_public_id.return_value = restaurant
-        mock_exception_repository.list_by_ru_id_and_date.return_value = [dinner_exception]
+        mock_exception_repository.list_by_ru_id_and_date.return_value = [
+            dinner_exception
+        ]
         mock_meal_period_service.resolve.return_value = MealPeriodEnum.LUNCH
 
         result = await service.get_active_exception(restaurant.public_id, _AT)

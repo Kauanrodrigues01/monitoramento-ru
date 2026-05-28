@@ -23,6 +23,7 @@ services:
       APP_GEO_SECRET: "${APP_GEO_SECRET}"
       GEO_SIGNATURE_MAX_SKEW_SECONDS: "${GEO_SIGNATURE_MAX_SKEW_SECONDS:-60}"
       REDIS_URL: redis://redis:6379/0
+      DEBUG: "${DEBUG:-False}"
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS}"
     depends_on:
       db:

@@ -8,6 +8,7 @@
    - Coordenadas conhecidas
    - Horário de funcionamento configurado para o período atual (lunch ou dinner)
    - `geofence_radius_m` configurado
+4. Todos os requests ao `POST /reports` exigem o header **`X-Device-ID`** com um identificador único do dispositivo (qualquer string — ex: UUID gerado uma vez por instalação do app). Sem esse header, o endpoint retorna `400`.
 
 ### Gerando a assinatura
 
@@ -19,6 +20,11 @@ Copie `geo_timestamp` e `geo_signature` da resposta.
 ## 1. Happy path — relato criado com sucesso
 
 **Objetivo:** confirmar que um relato válido é criado e retorna 201.
+
+**Header obrigatório:**
+```
+X-Device-ID: meu-dispositivo-teste-001
+```
 
 **Request:**
 ```json
@@ -38,16 +44,22 @@ POST /api/v1/restaurants/{public_id}/queue-reports
 
 ---
 
-## 2. Cooldown — mesmo IP, relato recente
+## 2. Cooldown — mesmo dispositivo, relato recente
 
-**Objetivo:** confirmar que o segundo relato dentro do cooldown é bloqueado.
+**Objetivo:** confirmar que o segundo relato do mesmo dispositivo dentro do cooldown é bloqueado.
 
 **Passos:**
-1. Execute o teste 1 com sucesso
+1. Execute o teste 1 com sucesso (usando `X-Device-ID: meu-dispositivo-teste-001`)
 2. Gere uma nova assinatura
-3. Envie o mesmo request imediatamente
+3. Envie o mesmo request com **o mesmo** `X-Device-ID` imediatamente
 
 **Esperado:** `429` — "Você já enviou um relato recentemente."
+
+**Variação — dispositivo diferente:**
+
+Envie com `X-Device-ID: outro-dispositivo-002` e uma nova assinatura imediatamente após o teste 1.
+
+**Esperado:** `201 Created` — o cooldown é por dispositivo, não por IP.
 
 ---
 

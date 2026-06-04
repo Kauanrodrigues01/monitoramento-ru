@@ -10,6 +10,7 @@ from app.core.openapi_responses import (
 )
 from app.core.rate_limiter import limiter
 from app.core.rate_limits import QUEUE_REPORT_RATE_LIMIT, READ_RATE_LIMIT
+from app.dependencies.headers import DeviceIdHeaderDep
 from app.dependencies.queue_report_dependencies import QueueReportServiceDep
 from app.exceptions.geo_signature_exceptions import (
     ExpiredGeoSignatureException,
@@ -54,12 +55,13 @@ async def create_queue_report(
     restaurant_public_id: UUID,
     queue_report_data: QueueReportCreate,
     service: QueueReportServiceDep,
+    device_id: DeviceIdHeaderDep,
     request: Request,
     background_tasks: BackgroundTasks,
 ):
     ip = IpService.get_client_ip(request)
     return await service.create_queue_report(
-        restaurant_public_id, queue_report_data, ip, background_tasks
+        restaurant_public_id, queue_report_data, ip, device_id, background_tasks
     )
 
 

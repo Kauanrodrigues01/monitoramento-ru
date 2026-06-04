@@ -29,10 +29,10 @@
   - [x] Restaurant existe e está ativo
   - [x] Assinatura HMAC com `APP_GEO_SECRET` — payload: `{lat:.6f}|{lng:.6f}|{accuracy_m:.1f}|{geo_timestamp}` — retorna `400` se inválida
   - [x] Janela temporal da assinatura: 60s por padrão (`GEO_SIGNATURE_MAX_SKEW_SECONDS` no `.env`)
-  - [x] Cooldown por IP: 2 min por padrão (`QUEUE_REPORT_COOLDOWN_MINUTES` no `.env`)
+  - [x] Cooldown por dispositivo (device_hash): 2 min por padrão (`QUEUE_REPORT_COOLDOWN_MINUTES` no `.env`) — header `X-Device-ID` obrigatório; evita que uma rede compartilhada bloqueie múltiplos usuários ao mesmo tempo
   - [x] Verificação de horário de funcionamento (exceptions → schedules)
   - [x] Geofence (distância vs `geofence_radius_m` do restaurant)
-- [x] Campos inferidos pelo servidor: `meal_period`, `ip_hash`, `confidence_score`
+- [x] Campos inferidos pelo servidor: `meal_period`, `ip_hash`, `device_hash`, `confidence_score`
 - [x] Retorna `201` (sem async ainda — evolui para `202` com Celery)
 - [x] Endpoint `GET /v1/restaurants/{public_id}/reports/recent` — últimos 20 relatos do período vigente
 - [x] Response: apenas `public_id`, `status`, `meal_period`, `created_at`
@@ -50,25 +50,26 @@
 
 ### Rate Limit (slowapi)
 - [x] Aplicado a todos os endpoints da aplicação
+- [x] Chave do rate limit: `X-Device-ID` (header) → IP → `"anonymous"` (implementado em `app/core/rate_limiter.py`)
 
 **Regras definidas** (`app/core/rate_limits.py`):
 
-| Operação | Limite |
-|---|---|
-| `POST /restaurants` | 10 req/min por IP |
-| `GET /restaurants` | 60 req/min por IP |
-| `GET /restaurants/{id}` | 60 req/min por IP |
-| `PATCH /restaurants/{id}` | 10 req/min por IP |
-| `POST /restaurants/{id}/schedules` | 20 req/min por IP |
-| `GET /restaurants/{id}/schedules` | 60 req/min por IP |
-| `PATCH /restaurants/{id}/schedules/{sid}` | 20 req/min por IP |
-| `POST /restaurants/{id}/schedule-exceptions` | 5 req/min por IP |
-| `GET /restaurants/{id}/schedule-exceptions` | 60 req/min por IP |
-| `PATCH /restaurants/{id}/schedule-exceptions/{eid}` | 10 req/min por IP |
-| `POST /restaurants/{id}/reports` | 20 req/min por IP (DoS bruto; cooldown real no service) |
-| `GET /restaurants/{id}/reports/recent` | 60 req/min por IP |
-| `GET /restaurants/status/bulk` | 20 req/min por IP |
-| `GET /restaurants/{id}/status` | 60 req/min por IP |
+| Operação | Limite | Chave efetiva |
+|---|---|---|
+| `POST /restaurants` | 10 req/min | IP |
+| `GET /restaurants` | 60 req/min | IP |
+| `GET /restaurants/{id}` | 60 req/min | IP |
+| `PATCH /restaurants/{id}` | 10 req/min | IP |
+| `POST /restaurants/{id}/schedules` | 20 req/min | IP |
+| `GET /restaurants/{id}/schedules` | 60 req/min | IP |
+| `PATCH /restaurants/{id}/schedules/{sid}` | 20 req/min | IP |
+| `POST /restaurants/{id}/schedule-exceptions` | 5 req/min | IP |
+| `GET /restaurants/{id}/schedule-exceptions` | 60 req/min | IP |
+| `PATCH /restaurants/{id}/schedule-exceptions/{eid}` | 10 req/min | IP |
+| `POST /restaurants/{id}/reports` | 20 req/min (DoS bruto) | `X-Device-ID` (obrigatório neste endpoint) |
+| `GET /restaurants/{id}/reports/recent` | 60 req/min | IP |
+| `GET /restaurants/status/bulk` | 20 req/min | IP |
+| `GET /restaurants/{id}/status` | 60 req/min | IP |
 
 ### Queue Snapshots
 - [x] Model `queue_snapshot`
@@ -416,7 +417,7 @@ Dados de atividade do restaurante **no dia corrente**, para exibição na págin
 |---|---|---|---|
 | Status HMAC inválido | 401 | 400 | **400 correto** — validação de payload, não autenticação |
 | Status criação report | 202 | 201 | **201 correto no MVP** — evolui para 202 com Celery |
-| Cooldown por IP | 2 min | 2 min (configurável) | Alinhado |
+| Cooldown por dispositivo (device_hash) | 2 min | 2 min (configurável) | Migrado de IP para device_hash — evita bloqueio em redes compartilhadas |
 | Penalidade lat/lng redondo | −0.15 | −0.25 | Escopo atualizado para refletir implementação |
 | `geo_sig_valid` | Campo no banco | Removido | Campo invariante — sempre `true`, sem valor analítico |
 | Recálculo snapshot | Celery task | Background Tasks FastAPI | Bridge para MVP — evolui para Celery na fase de processamento assíncrono |

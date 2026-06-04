@@ -1,3 +1,4 @@
+import hashlib
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -7,6 +8,7 @@ from app.core.datetime_utils import to_app_tz, utc_now
 from app.core.geo_utils import GeoUtils
 from app.core.logging import get_logger
 from app.core.settings import settings
+from app.exceptions.header_exceptions import RequiredDeviceIdHeaderError
 from app.exceptions.queue_report_exceptions import (
     QueueReportLocationOutOfGeofenceError,
     QueueReportTooRecentError,
@@ -57,6 +59,7 @@ class QueueReportService:
         restaurant_public_id: UUID,
         queue_report_data: QueueReportCreate,
         ip: str | None,
+        device_id: str | None,
         background_tasks: BackgroundTasks,
     ) -> QueueReport:
         """
@@ -77,11 +80,12 @@ class QueueReportService:
              e compara com a assinatura recebida em tempo constante (compare_digest).
              → InvalidGeoSignatureException (400)
 
-        3. COOLDOWN POR IP (apenas IPs identificáveis)
-           Impede que o mesmo IP envie mais de 1 relato a cada
-           QUEUE_REPORT_COOLDOWN_MINUTES (padrão 3 min), contando apenas relatos
-           que chegaram até o commit. IPs não identificáveis ("unknown") pulam esta
-           verificação para não bloquear usuários anônimos entre si.
+        3. COOLDOWN POR DEVICE_HASH
+           Impede que o mesmo dispositivo envie mais de 1 relato a cada
+           QUEUE_REPORT_COOLDOWN_MINUTES (padrão 2 min), contando apenas relatos
+           que chegaram até o commit. O device_id é obrigatório; sua ausência
+           é rejeitada antes da validação da assinatura geo.
+           → RequiredDeviceIdHeaderError (400)
            → QueueReportTooRecentError (429)
 
         4. HORÁRIO DE FUNCIONAMENTO (MealPeriodService)
@@ -121,9 +125,14 @@ class QueueReportService:
         unknown_ip = ip is None or ip == "unknown"
 
         if unknown_ip:
-            logger.warning("IP do cliente não pôde ser determinado — cooldown ignorado")
+            logger.warning("IP do cliente não pôde ser determinado")
 
         ip_hash = IpService.hash_ip(ip if not unknown_ip else "unknown")
+
+        if not device_id:
+            raise RequiredDeviceIdHeaderError()
+
+        device_hash = hashlib.sha256(device_id.encode()).hexdigest()
 
         # Valida a assinatura de geolocalização, garante que veio de um app legítimo.
         # Feito antes do cooldown para não vazar estado do cooldown a requisições ilegítimas.
@@ -147,13 +156,11 @@ class QueueReportService:
             }
         )
 
-        if not unknown_ip:
-            recent_report = await self.repo.get_last_by_ip_hash_within_minutes(
-                ip_hash=ip_hash,
-                minutes=settings.QUEUE_REPORT_COOLDOWN_MINUTES,
-            )
-            if recent_report:
-                raise QueueReportTooRecentError()
+        recent_report = await self.repo.get_last_by_device_hash_within_minutes(
+            device_hash=device_hash, minutes=settings.QUEUE_REPORT_COOLDOWN_MINUTES
+        )
+        if recent_report:
+            raise QueueReportTooRecentError()
 
         dt = to_app_tz(datetime.fromtimestamp(data.geo_timestamp, tz=UTC))
 
@@ -195,6 +202,7 @@ class QueueReportService:
                     ru_id=restaurant.id,
                     meal_period=meal_period,
                     ip_hash=ip_hash,
+                    device_hash=device_hash,
                     confidence_score=confidence_score,
                     **data.model_dump(exclude=_SCHEMA_ONLY_FIELDS),
                 )

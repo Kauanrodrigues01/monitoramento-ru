@@ -9,6 +9,7 @@ O snapshot de cada restaurante é recalculado ao final via SnapshotStatusService
 """
 
 import asyncio
+import hashlib
 import random
 from datetime import timedelta
 from decimal import Decimal
@@ -50,6 +51,12 @@ def _weighted_status() -> ReportStatusEnum:
 def _fake_ip_hash() -> str:
     ip = random.choice(_FAKE_IPS)
     return IpService.hash_ip(ip)
+
+
+def _fake_device_hash() -> str:
+    device_id = str(uuid4())
+    device_hash = hashlib.sha256(device_id.encode()).hexdigest()
+    return device_hash
 
 
 def _near_coords(lat: float, lng: float, radius_m: int) -> tuple[Decimal, Decimal]:
@@ -113,6 +120,7 @@ async def seed_reports() -> None:
                         lat=lat,
                         lng=lng,
                         ip_hash=_fake_ip_hash(),
+                        device_hash=_fake_device_hash(),
                         accuracy_m=accuracy_m,
                         confidence_score=confidence_score,
                         is_mock_location=False,

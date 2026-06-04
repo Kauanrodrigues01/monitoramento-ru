@@ -44,6 +44,11 @@ class QueueReport(Base):
             "meal_period",
             "created_at",
         ),
+        Index(
+            "ix_queue_reports_lookup_device_hash",
+            "device_hash",
+            "created_at",
+        ),
         confidence_score_constraint,
     )
 
@@ -68,6 +73,9 @@ class QueueReport(Base):
 
     # SHA-256 do IP; nunca armazenamos IP real (LGPD)
     ip_hash: Mapped[str] = mapped_column(String(64))
+
+    # SHA-256 de um identificador do dispositivo (ex: Android ID, IDFA); nunca armazenamos o identificador real (LGPD)
+    device_hash: Mapped[str] = mapped_column(String(64))
 
     accuracy_m: Mapped[Decimal | None] = mapped_column(
         Numeric(8, 2),

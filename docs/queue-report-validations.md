@@ -49,19 +49,23 @@ Quando `accuracy_m` não é informado, o literal `null` é usado no lugar:
 
 ---
 
-## 3. Cooldown por IP
+## 3. Cooldown por dispositivo
 
-Impede que o mesmo IP envie mais de 1 relato bem-sucedido dentro da janela de `QUEUE_REPORT_COOLDOWN_MINUTES` (padrão: 3 min).
+Impede que o mesmo dispositivo envie mais de 1 relato bem-sucedido dentro da janela de `QUEUE_REPORT_COOLDOWN_MINUTES` (padrão: 2 min).
 
+O cooldown é baseado no **identificador do dispositivo** (`X-Device-ID`), e não no IP, porque o IP não distingue usuários individuais em redes compartilhadas — o Wi-Fi do campus, por exemplo, faz todos os estudantes aparecerem com o mesmo IP, o que bloquearia relatos legítimos de pessoas diferentes ao mesmo tempo.
+
+- O `device_id` é enviado pelo cliente no header `X-Device-ID` (obrigatório)
+- O servidor armazena apenas o **SHA-256 do device_id** — o identificador real nunca é persistido (LGPD)
 - A contagem é feita no banco — funciona com múltiplos workers e sobrevive a restarts
 - Conta apenas relatos que chegaram ao commit (relatos rejeitados por outras validações não contam)
-- IPs não identificáveis (`"unknown"`) **pulam esta verificação** para não bloquear usuários anônimos entre si
 
-| Exceção | Status |
-|---|---|
-| `QueueReportTooRecentError` | 429 |
+| Exceção | Status | Causa |
+|---|---|---|
+| `RequiredDeviceIdHeaderError` | 400 | Header `X-Device-ID` ausente |
+| `QueueReportTooRecentError` | 429 | Mesmo dispositivo enviou relato recentemente |
 
-> O `slowapi` (20 req/min) opera em paralelo como proteção contra **DoS bruto**, independente desta lógica.
+> O `slowapi` (20 req/min por dispositivo — chave `X-Device-ID`, com fallback por IP) opera em paralelo como proteção contra **DoS bruto**, independente desta lógica.
 
 ---
 
@@ -128,4 +132,5 @@ Estes valores **nunca são aceitos do cliente** — são sempre derivados pelo s
 |---|---|
 | `meal_period` | Inferido pelo horário do relato via schedules e exceções (passos 4b/4c) |
 | `ip_hash` | SHA-256 do IP resolvido — o IP real nunca é armazenado (LGPD) |
+| `device_hash` | SHA-256 do `X-Device-ID` recebido no header — o identificador real nunca é armazenado (LGPD) |
 | `confidence_score` | Penalidades aplicadas por: mock location (−0.80), accuracy ausente/0 (−0.30), accuracy entre 20–50m (−0.15), coordenadas com arredondamento suspeito (−0.50). Mínimo: 0.05 |

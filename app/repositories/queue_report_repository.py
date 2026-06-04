@@ -1,12 +1,11 @@
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from app.core.datetime_utils import utc_now
-from app.core.settings import settings
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.datetime_utils import utc_now
+from app.core.settings import settings
 from app.models.queue_reports import QueueReport
 from app.models.restaurant import MealPeriodEnum
 
@@ -25,12 +24,28 @@ class QueueReportRepository:
         self, ip_hash: str, minutes: int
     ) -> QueueReport | None:
         cutoff = utc_now() - timedelta(minutes=minutes)
-        result = await self.db_session.execute(
+        query = (
             select(QueueReport)
             .where(QueueReport.ip_hash == ip_hash, QueueReport.created_at >= cutoff)
             .order_by(QueueReport.created_at.desc())
             .limit(1)
         )
+        result = await self.db_session.execute(query)
+        return result.scalar_one_or_none()
+
+    async def get_last_by_device_hash_within_minutes(
+        self, device_hash: str, minutes: int
+    ) -> QueueReport | None:
+        cutoff = utc_now() - timedelta(minutes=minutes)
+        query = (
+            select(QueueReport)
+            .where(
+                QueueReport.device_hash == device_hash, QueueReport.created_at >= cutoff
+            )
+            .order_by(QueueReport.created_at.desc())
+            .limit(1)
+        )
+        result = await self.db_session.execute(query)
         return result.scalar_one_or_none()
 
     async def list_recent_by_period(

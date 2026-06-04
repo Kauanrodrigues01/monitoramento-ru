@@ -24,6 +24,8 @@ from app.exceptions.restaurant_exceptions import RestaurantNotFoundError
 from app.models.queue_reports import QueueReport
 from app.models.restaurant import MealPeriodEnum
 from app.tests.unit.services.queue_report_service._base import (
+    _DEVICE_HASH,
+    _DEVICE_ID,
     _GEO_TIMESTAMP,
     _IP,
     _IP_HASH,
@@ -60,7 +62,7 @@ class TestCreateQueueReport_HappyPath:
             patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
         ):
             result = await service.create_queue_report(
-                restaurant.public_id, valid_payload, _IP, background_tasks
+                restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
             )
 
         assert result is queue_report
@@ -85,7 +87,7 @@ class TestCreateQueueReport_HappyPath:
             patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
         ):
             await service.create_queue_report(
-                restaurant.public_id, valid_payload, _IP, background_tasks
+                restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
             )
 
         created: QueueReport = mock_repo.create.call_args[0][0]
@@ -111,7 +113,7 @@ class TestCreateQueueReport_HappyPath:
             patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
         ):
             await service.create_queue_report(
-                restaurant.public_id, valid_payload, _IP, background_tasks
+                restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
             )
 
         from app.core.datetime_utils import to_app_tz
@@ -142,7 +144,7 @@ class TestCreateQueueReport_HappyPath:
             patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
         ):
             await service.create_queue_report(
-                restaurant.public_id, valid_payload, _IP, background_tasks
+                restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
             )
 
         created: QueueReport = mock_repo.create.call_args[0][0]
@@ -174,7 +176,7 @@ class TestCreateQueueReport_HappyPath:
             patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
         ):
             await service.create_queue_report(
-                restaurant.public_id, valid_payload, _IP, background_tasks
+                restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
             )
 
         created: QueueReport = mock_repo.create.call_args[0][0]
@@ -192,7 +194,7 @@ class TestCreateQueueReport_Restaurant:
 
         with pytest.raises(RestaurantNotFoundError):
             await service.create_queue_report(
-                uuid4(), valid_payload, _IP, background_tasks
+                uuid4(), valid_payload, _IP, _DEVICE_ID, background_tasks
             )
 
     async def test_restaurant_found_continues_pipeline(
@@ -215,7 +217,7 @@ class TestCreateQueueReport_Restaurant:
             patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
         ):
             result = await service.create_queue_report(
-                restaurant.public_id, valid_payload, _IP, background_tasks
+                restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
             )
 
         assert result is queue_report
@@ -240,7 +242,7 @@ class TestCreateQueueReport_Restaurant:
             patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
         ):
             await service.create_queue_report(
-                restaurant.public_id, valid_payload, _IP, background_tasks
+                restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
             )
 
         mock_restaurant_repo.get_by_public_id.assert_called_once_with(
@@ -262,7 +264,7 @@ class TestCreateQueueReport_GeoSignature:
         ):
             with pytest.raises(InvalidGeoSignatureException):
                 await service.create_queue_report(
-                    restaurant.public_id, valid_payload, _IP, background_tasks
+                    restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
                 )
 
     async def test_expired_signature_raises_expired_geo_signature(
@@ -279,7 +281,7 @@ class TestCreateQueueReport_GeoSignature:
         ):
             with pytest.raises(ExpiredGeoSignatureException):
                 await service.create_queue_report(
-                    restaurant.public_id, valid_payload, _IP, background_tasks
+                    restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
                 )
 
     async def test_invalid_signature_does_not_check_cooldown(
@@ -298,10 +300,10 @@ class TestCreateQueueReport_GeoSignature:
         ):
             with pytest.raises(InvalidGeoSignatureException):
                 await service.create_queue_report(
-                    restaurant.public_id, valid_payload, _IP, background_tasks
+                    restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
                 )
 
-        mock_repo.get_last_by_ip_hash_within_minutes.assert_not_called()
+        mock_repo.get_last_by_device_hash_within_minutes.assert_not_called()
 
     async def test_geo_signature_validated_with_correct_payload_fields(
         self,
@@ -323,7 +325,7 @@ class TestCreateQueueReport_GeoSignature:
             patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
         ):
             await service.create_queue_report(
-                restaurant.public_id, valid_payload, _IP, background_tasks
+                restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
             )
 
         mock_validate.assert_called_once_with(
@@ -339,7 +341,7 @@ class TestCreateQueueReport_GeoSignature:
 
 
 class TestCreateQueueReport_Cooldown:
-    async def test_ip_none_skips_cooldown_check(
+    async def test_ip_none_does_not_skip_device_cooldown_check(
         self,
         service,
         mock_repo,
@@ -362,12 +364,13 @@ class TestCreateQueueReport_Cooldown:
                 restaurant.public_id,
                 valid_payload,
                 ip=None,
+                device_id=_DEVICE_ID,
                 background_tasks=background_tasks,
             )
 
-        mock_repo.get_last_by_ip_hash_within_minutes.assert_not_called()
+        mock_repo.get_last_by_device_hash_within_minutes.assert_called_once()
 
-    async def test_ip_unknown_string_skips_cooldown_check(
+    async def test_ip_unknown_string_does_not_skip_device_cooldown_check(
         self,
         service,
         mock_repo,
@@ -390,10 +393,11 @@ class TestCreateQueueReport_Cooldown:
                 restaurant.public_id,
                 valid_payload,
                 ip="unknown",
+                device_id=_DEVICE_ID,
                 background_tasks=background_tasks,
             )
 
-        mock_repo.get_last_by_ip_hash_within_minutes.assert_not_called()
+        mock_repo.get_last_by_device_hash_within_minutes.assert_called_once()
 
     async def test_valid_ip_checks_cooldown_in_repo(
         self,
@@ -417,11 +421,11 @@ class TestCreateQueueReport_Cooldown:
         ):
             mock_settings.QUEUE_REPORT_COOLDOWN_MINUTES = 2
             await service.create_queue_report(
-                restaurant.public_id, valid_payload, _IP, background_tasks
+                restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
             )
 
-        mock_repo.get_last_by_ip_hash_within_minutes.assert_called_once_with(
-            ip_hash=_IP_HASH,
+        mock_repo.get_last_by_device_hash_within_minutes.assert_called_once_with(
+            device_hash=_DEVICE_HASH,
             minutes=2,
         )
 
@@ -435,7 +439,7 @@ class TestCreateQueueReport_Cooldown:
         background_tasks,
     ):
         mock_restaurant_repo.get_by_public_id.return_value = restaurant
-        mock_repo.get_last_by_ip_hash_within_minutes.return_value = _make_queue_report()
+        mock_repo.get_last_by_device_hash_within_minutes.return_value = _make_queue_report()
 
         with (
             patch(_PATCH_GEO_SIG),
@@ -443,7 +447,7 @@ class TestCreateQueueReport_Cooldown:
         ):
             with pytest.raises(QueueReportTooRecentError):
                 await service.create_queue_report(
-                    restaurant.public_id, valid_payload, _IP, background_tasks
+                    restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
                 )
 
     async def test_no_recent_report_cooldown_passes(
@@ -459,7 +463,7 @@ class TestCreateQueueReport_Cooldown:
         _setup_full_happy_path(
             mock_repo, mock_restaurant_repo, mock_meal_period_service, restaurant
         )
-        mock_repo.get_last_by_ip_hash_within_minutes.return_value = None
+        mock_repo.get_last_by_device_hash_within_minutes.return_value = None
 
         with (
             patch(_PATCH_GEO_SIG),
@@ -467,7 +471,7 @@ class TestCreateQueueReport_Cooldown:
             patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
         ):
             result = await service.create_queue_report(
-                restaurant.public_id, valid_payload, _IP, background_tasks
+                restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
             )
 
         assert result is not None
@@ -495,6 +499,7 @@ class TestCreateQueueReport_Cooldown:
                 restaurant.public_id,
                 valid_payload,
                 ip=None,
+                device_id=_DEVICE_ID,
                 background_tasks=background_tasks,
             )
 
@@ -512,7 +517,7 @@ class TestCreateQueueReport_Cooldown:
         background_tasks,
     ):
         mock_restaurant_repo.get_by_public_id.return_value = restaurant
-        mock_repo.get_last_by_ip_hash_within_minutes.return_value = _make_queue_report()
+        mock_repo.get_last_by_device_hash_within_minutes.return_value = _make_queue_report()
 
         with (
             patch(_PATCH_GEO_SIG),
@@ -520,7 +525,7 @@ class TestCreateQueueReport_Cooldown:
         ):
             with pytest.raises(QueueReportTooRecentError):
                 await service.create_queue_report(
-                    restaurant.public_id, valid_payload, _IP, background_tasks
+                    restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
                 )
 
         mock_meal_period_service.resolve.assert_not_called()
@@ -541,13 +546,13 @@ class TestCreateQueueReport_MealPeriod:
         background_tasks,
     ):
         mock_restaurant_repo.get_by_public_id.return_value = restaurant
-        mock_repo.get_last_by_ip_hash_within_minutes.return_value = None
+        mock_repo.get_last_by_device_hash_within_minutes.return_value = None
         mock_meal_period_service.resolve.side_effect = RestaurantClosedAllDayError()
 
         with patch(_PATCH_GEO_SIG):
             with pytest.raises(RestaurantClosedAllDayError):
                 await service.create_queue_report(
-                    restaurant.public_id, valid_payload, _IP, background_tasks
+                    restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
                 )
 
     async def test_outside_operating_hours_raises_error(
@@ -561,13 +566,13 @@ class TestCreateQueueReport_MealPeriod:
         background_tasks,
     ):
         mock_restaurant_repo.get_by_public_id.return_value = restaurant
-        mock_repo.get_last_by_ip_hash_within_minutes.return_value = None
+        mock_repo.get_last_by_device_hash_within_minutes.return_value = None
         mock_meal_period_service.resolve.side_effect = OutsideMealHoursError()
 
         with patch(_PATCH_GEO_SIG):
             with pytest.raises(OutsideMealHoursError):
                 await service.create_queue_report(
-                    restaurant.public_id, valid_payload, _IP, background_tasks
+                    restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
                 )
 
     async def test_specific_period_closed_raises_error(
@@ -581,13 +586,13 @@ class TestCreateQueueReport_MealPeriod:
         background_tasks,
     ):
         mock_restaurant_repo.get_by_public_id.return_value = restaurant
-        mock_repo.get_last_by_ip_hash_within_minutes.return_value = None
+        mock_repo.get_last_by_device_hash_within_minutes.return_value = None
         mock_meal_period_service.resolve.side_effect = MealPeriodClosedError()
 
         with patch(_PATCH_GEO_SIG):
             with pytest.raises(MealPeriodClosedError):
                 await service.create_queue_report(
-                    restaurant.public_id, valid_payload, _IP, background_tasks
+                    restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
                 )
 
     async def test_meal_period_resolved_with_restaurant_ru_id(
@@ -610,7 +615,7 @@ class TestCreateQueueReport_MealPeriod:
             patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
         ):
             await service.create_queue_report(
-                restaurant.public_id, valid_payload, _IP, background_tasks
+                restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
             )
 
         from app.core.datetime_utils import to_app_tz
@@ -631,7 +636,7 @@ class TestCreateQueueReport_MealPeriod:
         background_tasks,
     ):
         mock_restaurant_repo.get_by_public_id.return_value = restaurant
-        mock_repo.get_last_by_ip_hash_within_minutes.return_value = None
+        mock_repo.get_last_by_device_hash_within_minutes.return_value = None
         mock_meal_period_service.resolve.side_effect = OutsideMealHoursError()
 
         with (
@@ -641,7 +646,7 @@ class TestCreateQueueReport_MealPeriod:
         ):
             with pytest.raises(OutsideMealHoursError):
                 await service.create_queue_report(
-                    restaurant.public_id, valid_payload, _IP, background_tasks
+                    restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
                 )
 
         mock_haversine.assert_not_called()
@@ -673,7 +678,7 @@ class TestCreateQueueReport_Geofence:
             patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
         ):
             result = await service.create_queue_report(
-                restaurant.public_id, valid_payload, _IP, background_tasks
+                restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
             )
 
         assert result is not None
@@ -698,7 +703,7 @@ class TestCreateQueueReport_Geofence:
             patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
         ):
             result = await service.create_queue_report(
-                restaurant.public_id, valid_payload, _IP, background_tasks
+                restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
             )
 
         assert result is not None
@@ -728,7 +733,7 @@ class TestCreateQueueReport_Geofence:
             mock_settings.DEBUG = False
             with pytest.raises(QueueReportLocationOutOfGeofenceError):
                 await service.create_queue_report(
-                    restaurant.public_id, valid_payload, _IP, background_tasks
+                    restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
                 )
 
     async def test_geofence_calculated_with_payload_and_restaurant_coords(
@@ -751,7 +756,7 @@ class TestCreateQueueReport_Geofence:
             patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
         ):
             await service.create_queue_report(
-                restaurant.public_id, valid_payload, _IP, background_tasks
+                restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
             )
 
         mock_haversine.assert_called_once_with(
@@ -786,7 +791,7 @@ class TestCreateQueueReport_Geofence:
         ):
             mock_settings.DEBUG = True
             result = await service.create_queue_report(
-                restaurant.public_id, valid_payload, _IP, background_tasks
+                restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
             )
 
         assert result is not None
@@ -818,7 +823,7 @@ class TestCreateQueueReport_ConfidenceScore:
             patch(_PATCH_CONFIDENCE, return_value=expected_score),
         ):
             await service.create_queue_report(
-                restaurant.public_id, valid_payload, _IP, background_tasks
+                restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
             )
 
         created: QueueReport = mock_repo.create.call_args[0][0]
@@ -844,7 +849,7 @@ class TestCreateQueueReport_ConfidenceScore:
             patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")) as mock_confidence,
         ):
             await service.create_queue_report(
-                restaurant.public_id, valid_payload, _IP, background_tasks
+                restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
             )
 
         mock_confidence.assert_called_once_with(
@@ -880,7 +885,7 @@ class TestCreateQueueReport_ConfidenceScore:
             mock_settings.DEBUG = False
             with pytest.raises(QueueReportLocationOutOfGeofenceError):
                 await service.create_queue_report(
-                    restaurant.public_id, valid_payload, _IP, background_tasks
+                    restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
                 )
 
         mock_confidence.assert_called_once()
@@ -911,7 +916,7 @@ class TestCreateQueueReport_Persistence:
             patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
         ):
             await service.create_queue_report(
-                restaurant.public_id, valid_payload, _IP, background_tasks
+                restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
             )
 
         mock_repo.create.assert_called_once()
@@ -939,7 +944,7 @@ class TestCreateQueueReport_Persistence:
         ):
             with pytest.raises(RuntimeError, match="db error"):
                 await service.create_queue_report(
-                    restaurant.public_id, valid_payload, _IP, background_tasks
+                    restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
                 )
 
         mock_repo.db_session.rollback.assert_called_once()
@@ -966,7 +971,7 @@ class TestCreateQueueReport_Persistence:
         ):
             with pytest.raises(RuntimeError, match="commit error"):
                 await service.create_queue_report(
-                    restaurant.public_id, valid_payload, _IP, background_tasks
+                    restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
                 )
 
         mock_repo.db_session.rollback.assert_called_once()
@@ -991,7 +996,7 @@ class TestCreateQueueReport_Persistence:
             patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
         ):
             await service.create_queue_report(
-                restaurant.public_id, valid_payload, _IP, background_tasks
+                restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
             )
 
         mock_repo.db_session.rollback.assert_not_called()
@@ -1021,7 +1026,7 @@ class TestCreateQueueReport_BackgroundTask:
             patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
         ):
             await service.create_queue_report(
-                restaurant.public_id, valid_payload, _IP, background_tasks
+                restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
             )
 
         background_tasks.add_task.assert_called_once()
@@ -1046,7 +1051,7 @@ class TestCreateQueueReport_BackgroundTask:
             patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
         ):
             await service.create_queue_report(
-                restaurant.public_id, valid_payload, _IP, background_tasks
+                restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
             )
 
         background_tasks.add_task.assert_called_once_with(
@@ -1064,7 +1069,7 @@ class TestCreateQueueReport_BackgroundTask:
 
         with pytest.raises(RestaurantNotFoundError):
             await service.create_queue_report(
-                uuid4(), valid_payload, _IP, background_tasks
+                uuid4(), valid_payload, _IP, _DEVICE_ID, background_tasks
             )
 
         background_tasks.add_task.assert_not_called()
@@ -1094,7 +1099,7 @@ class TestCreateQueueReport_BackgroundTask:
             mock_settings.DEBUG = False
             with pytest.raises(QueueReportLocationOutOfGeofenceError):
                 await service.create_queue_report(
-                    restaurant.public_id, valid_payload, _IP, background_tasks
+                    restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
                 )
 
         background_tasks.add_task.assert_not_called()
@@ -1121,7 +1126,7 @@ class TestCreateQueueReport_BackgroundTask:
         ):
             with pytest.raises(RuntimeError):
                 await service.create_queue_report(
-                    restaurant.public_id, valid_payload, _IP, background_tasks
+                    restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
                 )
 
         background_tasks.add_task.assert_not_called()

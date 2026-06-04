@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -10,7 +11,9 @@ from app.core.exception_handlers import (
     rate_limit_exceeded_handler,
 )
 from app.core.logging import get_logger, setup_logging
+from app.core.pubsub import start_pubsub_listener
 from app.core.rate_limiter import limiter
+from app.core.redis import close_redis
 from app.core.settings import settings
 from app.exceptions.base import AppException
 
@@ -21,7 +24,10 @@ logger = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     logger.info("Application startup")
+    listener_task = asyncio.create_task(start_pubsub_listener())
     yield
+    listener_task.cancel()
+    await close_redis()
     logger.info("Application shutdown")
 
 
@@ -71,7 +77,7 @@ app.add_middleware(
     allow_origins=settings.CORS_ALLOWED_ORIGINS,
     allow_credentials=False,
     allow_methods=["GET", "POST", "PATCH"],
-    allow_headers=["Content-Type", "X-Admin-Key"],
+    allow_headers=["Content-Type", "X-Admin-Key", "X-Device-ID"],
 )
 
 app.state.limiter = limiter

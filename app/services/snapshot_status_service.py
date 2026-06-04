@@ -2,7 +2,6 @@ from datetime import datetime
 from decimal import Decimal
 
 from app.core.datetime_utils import to_app_tz, utc_now
-
 from app.core.logging import get_logger
 from app.exceptions.queue_snapshot_exceptions import QueueSnapshotNotFoundError
 from app.exceptions.restaurant_exceptions import RestaurantNotFoundError
@@ -13,6 +12,7 @@ from app.repositories.queue_report_repository import QueueReportRepository
 from app.repositories.queue_snapshot_repository import QueueSnapshotRepository
 from app.repositories.restaurant_repository import RestaurantRepository
 from app.services.meal_period_service import MealPeriodService
+from app.services.websocket_service import SnapshotWebSocketService
 
 logger = get_logger(__name__)
 
@@ -202,6 +202,11 @@ class SnapshotStatusService:
             restaurant.id,
             new_status.value,
             len(recent_reports),
+        )
+
+        await SnapshotWebSocketService.publish_snapshot(
+            snapshot=snapshot,
+            restaurant_public_id=restaurant.public_id,
         )
 
         return snapshot

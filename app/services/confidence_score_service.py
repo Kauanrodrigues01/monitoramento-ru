@@ -2,6 +2,9 @@ from decimal import Decimal
 
 from app.core.geo_utils import GeoUtils
 from app.core.logging import get_logger
+from app.models.queue_reports import ReportStatusEnum
+from app.models.queue_snapshot import QueueSnapshot
+from app.services.snapshot_status_service import STATUS_MAP_VALUE
 
 logger = get_logger(__name__)
 
@@ -11,10 +14,9 @@ PENALTIES = {
     "accuracy_m_20_to_50": Decimal("0.15"),
     # lat/lng com precisão suspeita (coordenadas redondas)
     "suspicious_round_coordinates": Decimal("0.25"),
-    # IP com histórico de relatos inconsistentes
-    "ip_with_inconsistent_history": Decimal("0.25"),
-    # Relato inconsistente com histórico recente do RU
-    "inconsistent_with_recent_history": Decimal("0.20"),
+    # Relato diverge do consenso recente — penalidade varia com a distância
+    "inconsistent_with_recent_history_severe": Decimal("0.25"),  # distance >= 2.0
+    "inconsistent_with_recent_history_moderate": Decimal("0.15"),  # distance >= 1.5
 }
 
 MIN_CONFIDENCE_SCORE = Decimal("0.05")
@@ -27,6 +29,8 @@ class ConfidenceScoreService:
         lng: Decimal,
         is_mock_location: bool,
         accuracy_m: Decimal | None,
+        report_status: ReportStatusEnum | None = None,
+        snapshot: QueueSnapshot | None = None,
     ) -> Decimal:
         confidence_score = Decimal("1.00")
 
@@ -50,6 +54,28 @@ class ConfidenceScoreService:
                 "Penalidade aplicada: coordenadas suspeitas (lat=%s, lng=%s)", lat, lng
             )
 
-        # Adicionar lógica para as penalidades: "ip_with_inconsistent_history" e "inconsistent_with_recent_history": ...
+        if (
+            snapshot is not None
+            and snapshot.avg_status_value is not None
+            and report_status is not None
+            and report_status in STATUS_MAP_VALUE
+        ):
+            status_value = STATUS_MAP_VALUE[report_status]
+            distance = abs(snapshot.avg_status_value - Decimal(status_value))
+
+            if distance >= Decimal("2.0"):
+                confidence_score -= PENALTIES["inconsistent_with_recent_history_severe"]
+                logger.debug(
+                    "Penalidade severa: divergência com histórico recente (distance=%.2f)",
+                    distance,
+                )
+            elif distance >= Decimal("1.5"):
+                confidence_score -= PENALTIES[
+                    "inconsistent_with_recent_history_moderate"
+                ]
+                logger.debug(
+                    "Penalidade moderada: divergência com histórico recente (distance=%.2f)",
+                    distance,
+                )
 
         return max(confidence_score, MIN_CONFIDENCE_SCORE)

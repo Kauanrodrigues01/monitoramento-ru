@@ -109,10 +109,14 @@ class SnapshotStatusService:
 
     def _compute_status(
         self, recent_reports: list[QueueReport]
-    ) -> tuple[SnapshotStatusEnum, Decimal]:
-        """Retorna (status, avg_confidence). Sem IO."""
+    ) -> tuple[SnapshotStatusEnum, Decimal, Decimal | None]:
+        """Retorna (status, avg_confidence, avg_status_value). Sem IO.
+
+        avg_status_value é o valor contínuo ponderado antes do arredondamento inteiro
+        que determina o status. None nos paths NO_DATA e FOOD_ENDED.
+        """
         if not recent_reports:
-            return SnapshotStatusEnum.NO_DATA, Decimal("1.00")
+            return SnapshotStatusEnum.NO_DATA, Decimal("1.00"), None
 
         now = utc_now()
 
@@ -128,7 +132,7 @@ class SnapshotStatusService:
                 sum(r.confidence_score for r in food_ended_5min)
                 / Decimal(len(food_ended_5min))
             ).quantize(_CONFIDENCE_PRECISION)
-            return SnapshotStatusEnum.FOOD_ENDED, avg_conf
+            return SnapshotStatusEnum.FOOD_ENDED, avg_conf, None
 
         adaptive_window = self._get_adaptive_time_window(recent_reports, now)
 
@@ -141,7 +145,7 @@ class SnapshotStatusService:
         scorable_reports = [r for r in window_reports if r.status in STATUS_MAP_VALUE]
 
         if not scorable_reports:
-            return SnapshotStatusEnum.NO_DATA, Decimal("1.00")
+            return SnapshotStatusEnum.NO_DATA, Decimal("1.00"), None
 
         total_weighted_value = 0.0
         total_weight = 0.0
@@ -157,25 +161,32 @@ class SnapshotStatusService:
             total_temporal_weight += temporal_weight
 
         if total_weight == 0:
-            return SnapshotStatusEnum.NO_DATA, Decimal("1.00")
+            return SnapshotStatusEnum.NO_DATA, Decimal("1.00"), None
 
         rounded_value = round(total_weighted_value / total_weight)
+        avg_status_value = Decimal(str(total_weighted_value / total_weight)).quantize(
+            _CONFIDENCE_PRECISION
+        )
+
         raw_confidence = total_weight / total_temporal_weight
         avg_confidence = Decimal(str(round(raw_confidence, 2))).quantize(
             _CONFIDENCE_PRECISION
         )
-        return _VALUE_STATUS_MAP[rounded_value], avg_confidence
+
+        return _VALUE_STATUS_MAP[rounded_value], avg_confidence, avg_status_value
 
     async def calculate_snapshot_status(self, ru_id: int) -> SnapshotStatusEnum:
         _, _, recent_reports = await self._resolve_context(ru_id)
-        status, _ = self._compute_status(recent_reports)
+        status, _, _ = self._compute_status(recent_reports)
         logger.debug("ru_id=%s status calculado: %s", ru_id, status.value)
         return status
 
     async def update_snapshot(self, ru_id: int) -> QueueSnapshot:
         restaurant, meal_period, recent_reports = await self._resolve_context(ru_id)
 
-        new_status, new_confidence = self._compute_status(recent_reports)
+        new_status, new_confidence, new_avg_status_value = self._compute_status(
+            recent_reports
+        )
 
         snapshot = await self.snapshot_repo.get_by_ru_id_and_meal_period(
             ru_id=restaurant.id, meal_period=meal_period
@@ -189,6 +200,7 @@ class SnapshotStatusService:
             raise QueueSnapshotNotFoundError()
 
         snapshot.current_status = new_status
+        snapshot.avg_status_value = new_avg_status_value
         snapshot.reports_last_15m = len(recent_reports)
         snapshot.last_report_at = (
             recent_reports[0].created_at if recent_reports else None

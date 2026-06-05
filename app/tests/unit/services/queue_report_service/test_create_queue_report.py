@@ -722,7 +722,7 @@ class TestCreateQueueReport_MealPeriod:
             at=to_app_tz(datetime.fromtimestamp(_GEO_TIMESTAMP, tz=UTC)),
         )
 
-    async def test_invalid_hours_does_not_check_geofence(
+    async def test_invalid_hours_does_not_calculate_confidence_score(
         self,
         service,
         mock_repo,
@@ -732,14 +732,16 @@ class TestCreateQueueReport_MealPeriod:
         valid_payload,
         background_tasks,
     ):
+        """Geofence é validado antes de meal_period; quando meal_period falha,
+        confidence_score não chega a ser calculado."""
         mock_restaurant_repo.get_by_public_id.return_value = restaurant
         mock_repo.get_last_by_device_hash_within_minutes.return_value = None
         mock_meal_period_service.resolve.side_effect = OutsideMealHoursError()
 
         with (
             patch(_PATCH_GEO_SIG),
-            patch(_PATCH_HAVERSINE) as mock_haversine,
-            patch(_PATCH_CONFIDENCE),
+            patch(_PATCH_HAVERSINE, return_value=50.0),
+            patch(_PATCH_CONFIDENCE) as mock_confidence,
         ):
             with pytest.raises(OutsideMealHoursError):
                 await service.create_queue_report(
@@ -750,7 +752,7 @@ class TestCreateQueueReport_MealPeriod:
                     background_tasks,
                 )
 
-        mock_haversine.assert_not_called()
+        mock_confidence.assert_not_called()
 
 
 # ── TestCreateQueueReport_Geofence ───────────────────────────────────────────
@@ -940,12 +942,14 @@ class TestCreateQueueReport_ConfidenceScore:
         mock_repo,
         mock_restaurant_repo,
         mock_meal_period_service,
+        mock_snapshot_repo,
         restaurant,
         valid_payload,
         background_tasks,
     ):
         _setup_full_happy_path(
-            mock_repo, mock_restaurant_repo, mock_meal_period_service, restaurant
+            mock_repo, mock_restaurant_repo, mock_meal_period_service, restaurant,
+            mock_snapshot_repo=mock_snapshot_repo,
         )
 
         with (
@@ -962,9 +966,11 @@ class TestCreateQueueReport_ConfidenceScore:
             lng=valid_payload.lng,
             is_mock_location=valid_payload.is_mock_location,
             accuracy_m=valid_payload.accuracy_m,
+            report_status=valid_payload.status,
+            snapshot=mock_snapshot_repo.get_by_ru_id_and_meal_period.return_value,
         )
 
-    async def test_confidence_score_calculated_before_geofence(
+    async def test_geofence_fails_before_confidence_score_is_calculated(
         self,
         service,
         mock_repo,
@@ -974,17 +980,16 @@ class TestCreateQueueReport_ConfidenceScore:
         valid_payload,
         background_tasks,
     ):
-        """When outside geofence, the score is already calculated but the report is not persisted."""
-        _setup_full_happy_path(
-            mock_repo, mock_restaurant_repo, mock_meal_period_service, restaurant
-        )
+        """Geofence é validado antes de confidence_score; fora do geofence, o score não é calculado."""
+        mock_restaurant_repo.get_by_public_id.return_value = restaurant
+        mock_repo.get_last_by_device_hash_within_minutes.return_value = None
 
         with (
             patch(_PATCH_GEO_SIG),
             patch(
                 _PATCH_HAVERSINE, return_value=float(restaurant.geofence_radius_m) + 1
             ),
-            patch(_PATCH_CONFIDENCE, return_value=Decimal("0.50")) as mock_confidence,
+            patch(_PATCH_CONFIDENCE) as mock_confidence,
             patch(_PATCH_SETTINGS) as mock_settings,
         ):
             mock_settings.DEBUG = False
@@ -997,7 +1002,7 @@ class TestCreateQueueReport_ConfidenceScore:
                     background_tasks,
                 )
 
-        mock_confidence.assert_called_once()
+        mock_confidence.assert_not_called()
         mock_repo.create.assert_not_called()
 
 

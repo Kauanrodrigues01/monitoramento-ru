@@ -1,7 +1,7 @@
 from decimal import Decimal
 from unittest.mock import patch
 
-
+from app.models.queue_reports import ReportStatusEnum
 from app.services.confidence_score_service import (
     MIN_CONFIDENCE_SCORE,
     PENALTIES,
@@ -534,8 +534,121 @@ class TestPenaltiesConstants:
     def test_minimum_confidence_score_value(self):
         assert MIN_CONFIDENCE_SCORE == Decimal("0.05")
 
-    def test_ip_with_inconsistent_history_penalty_value(self):
-        assert PENALTIES["ip_with_inconsistent_history"] == Decimal("0.25")
+    def test_inconsistent_severe_penalty_value(self):
+        assert PENALTIES["inconsistent_with_recent_history_severe"] == Decimal("0.25")
 
-    def test_inconsistent_with_recent_history_penalty_value(self):
-        assert PENALTIES["inconsistent_with_recent_history"] == Decimal("0.20")
+    def test_inconsistent_moderate_penalty_value(self):
+        assert PENALTIES["inconsistent_with_recent_history_moderate"] == Decimal("0.15")
+
+
+# ===== PENALIDADE: DIVERGÊNCIA COM HISTÓRICO RECENTE =====
+
+
+def _make_snapshot_with_avg(avg_status_value) -> object:
+    from types import SimpleNamespace
+    return SimpleNamespace(avg_status_value=avg_status_value)
+
+
+class TestCalculateConfidenceScoreDivergencia:
+    def test_penalidade_severa_quando_distance_maior_ou_igual_a_2(self):
+        # avg=1.0 (SMALL), relato=LARGE (3) → distance=2.0 → severa (−0.25)
+        snapshot = _make_snapshot_with_avg(Decimal("1.00"))
+        result = ConfidenceScoreService.calculate_confidence_score(
+            lat=_NORMAL_LAT,
+            lng=_NORMAL_LNG,
+            is_mock_location=False,
+            accuracy_m=Decimal("10"),
+            report_status=ReportStatusEnum.LARGE,
+            snapshot=snapshot,
+        )
+        assert result == Decimal("1.00") - PENALTIES["inconsistent_with_recent_history_severe"]
+        assert result == Decimal("0.75")
+
+    def test_penalidade_moderada_quando_distance_maior_ou_igual_a_1_5(self):
+        # avg=1.0 (SMALL), relato=MEDIUM (2) → distance=1.0 → sem penalidade (< 1.5)
+        # avg=0.0 (NO_QUEUE), relato=MEDIUM (2) → distance=2.0 → severa
+        # Para moderada: avg=0.50, relato=MEDIUM (2) → distance=1.50 → moderada (−0.15)
+        snapshot = _make_snapshot_with_avg(Decimal("0.50"))
+        result = ConfidenceScoreService.calculate_confidence_score(
+            lat=_NORMAL_LAT,
+            lng=_NORMAL_LNG,
+            is_mock_location=False,
+            accuracy_m=Decimal("10"),
+            report_status=ReportStatusEnum.MEDIUM,
+            snapshot=snapshot,
+        )
+        assert result == Decimal("1.00") - PENALTIES["inconsistent_with_recent_history_moderate"]
+        assert result == Decimal("0.85")
+
+    def test_sem_penalidade_quando_distance_menor_que_1_5(self):
+        # avg=1.0 (SMALL), relato=MEDIUM (2) → distance=1.0 → sem penalidade
+        snapshot = _make_snapshot_with_avg(Decimal("1.00"))
+        result = ConfidenceScoreService.calculate_confidence_score(
+            lat=_NORMAL_LAT,
+            lng=_NORMAL_LNG,
+            is_mock_location=False,
+            accuracy_m=Decimal("10"),
+            report_status=ReportStatusEnum.MEDIUM,
+            snapshot=snapshot,
+        )
+        assert result == Decimal("1.00")
+
+    def test_sem_penalidade_quando_avg_status_value_e_none(self):
+        snapshot = _make_snapshot_with_avg(None)
+        result = ConfidenceScoreService.calculate_confidence_score(
+            lat=_NORMAL_LAT,
+            lng=_NORMAL_LNG,
+            is_mock_location=False,
+            accuracy_m=Decimal("10"),
+            report_status=ReportStatusEnum.LARGE,
+            snapshot=snapshot,
+        )
+        assert result == Decimal("1.00")
+
+    def test_sem_penalidade_quando_snapshot_e_none(self):
+        result = ConfidenceScoreService.calculate_confidence_score(
+            lat=_NORMAL_LAT,
+            lng=_NORMAL_LNG,
+            is_mock_location=False,
+            accuracy_m=Decimal("10"),
+            report_status=ReportStatusEnum.LARGE,
+            snapshot=None,
+        )
+        assert result == Decimal("1.00")
+
+    def test_sem_penalidade_quando_report_status_e_none(self):
+        snapshot = _make_snapshot_with_avg(Decimal("1.00"))
+        result = ConfidenceScoreService.calculate_confidence_score(
+            lat=_NORMAL_LAT,
+            lng=_NORMAL_LNG,
+            is_mock_location=False,
+            accuracy_m=Decimal("10"),
+            snapshot=snapshot,
+        )
+        assert result == Decimal("1.00")
+
+    def test_sem_penalidade_para_food_ended_pois_nao_esta_no_map(self):
+        # FOOD_ENDED não está em STATUS_MAP_VALUE → skip da penalidade
+        snapshot = _make_snapshot_with_avg(Decimal("0.00"))
+        result = ConfidenceScoreService.calculate_confidence_score(
+            lat=_NORMAL_LAT,
+            lng=_NORMAL_LNG,
+            is_mock_location=False,
+            accuracy_m=Decimal("10"),
+            report_status=ReportStatusEnum.FOOD_ENDED,
+            snapshot=snapshot,
+        )
+        assert result == Decimal("1.00")
+
+    def test_penalidade_funciona_com_avg_zero_no_queue(self):
+        # avg=0.0 (NO_QUEUE), relato=LARGE (3) → distance=3.0 → severa (−0.25)
+        snapshot = _make_snapshot_with_avg(Decimal("0.00"))
+        result = ConfidenceScoreService.calculate_confidence_score(
+            lat=_NORMAL_LAT,
+            lng=_NORMAL_LNG,
+            is_mock_location=False,
+            accuracy_m=Decimal("10"),
+            report_status=ReportStatusEnum.LARGE,
+            snapshot=snapshot,
+        )
+        assert result == Decimal("1.00") - PENALTIES["inconsistent_with_recent_history_severe"]

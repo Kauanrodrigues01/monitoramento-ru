@@ -41,6 +41,10 @@ class QueueSnapshot(Base):
             "reports_last_15m >= 0",
             name="ck_reports_last_15m_positive",
         ),
+        CheckConstraint(
+            "avg_status_value IS NULL OR (avg_status_value >= 0.00 AND avg_status_value <= 3.00)",
+            name="ck_avg_status_value_range",
+        ),
         confidence_score_constraint,
     )
 
@@ -65,6 +69,10 @@ class QueueSnapshot(Base):
         default=SnapshotStatusEnum.NO_DATA,
         server_default=text(f"'{SnapshotStatusEnum.NO_DATA.value}'"),
     )
+
+    # Nulo quando current_status for NO_DATA ou FOOD_ENDED
+    # Valor contínuo ponderado antes do arredondamento inteiro, entre 0.00 e 3.00
+    avg_status_value: Mapped[Decimal | None] = mapped_column(Numeric(3, 2), nullable=True)
 
     reports_last_15m: Mapped[int] = mapped_column(default=0, server_default=text("0"))
 

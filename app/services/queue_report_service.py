@@ -17,6 +17,7 @@ from app.exceptions.restaurant_exceptions import RestaurantNotFoundError
 from app.models.queue_reports import QueueReport
 from app.models.restaurant import Restaurant
 from app.repositories.queue_report_repository import QueueReportRepository
+from app.repositories.queue_snapshot_repository import QueueSnapshotRepository
 from app.repositories.restaurant_repository import RestaurantRepository
 from app.schemas.queue_report_schemas import QueueReportCreate, truncate_coordinate
 from app.services.confidence_score_service import ConfidenceScoreService
@@ -36,11 +37,13 @@ class QueueReportService:
         self,
         repo: QueueReportRepository,
         restaurant_repo: RestaurantRepository,
+        snapshot_repo: QueueSnapshotRepository,
         meal_period_service: MealPeriodService,
         snapshot_status_service: SnapshotStatusService,
     ):
         self.repo = repo
         self.restaurant_repo = restaurant_repo
+        self.snapshot_repo = snapshot_repo
         self.meal_period_service = meal_period_service
         self.snapshot_status_service = snapshot_status_service
 
@@ -162,17 +165,6 @@ class QueueReportService:
         if recent_report:
             raise QueueReportTooRecentError()
 
-        dt = to_app_tz(datetime.fromtimestamp(data.geo_timestamp, tz=UTC))
-
-        meal_period = await self.meal_period_service.resolve(ru_id=restaurant.id, at=dt)
-
-        confidence_score = ConfidenceScoreService.calculate_confidence_score(
-            lat=data.lat,
-            lng=data.lng,
-            is_mock_location=data.is_mock_location,
-            accuracy_m=data.accuracy_m,
-        )
-
         distance_m = GeoUtils.haversine_distance_m(
             lat1=float(data.lat),
             lng1=float(data.lng),
@@ -195,6 +187,23 @@ class QueueReportService:
                     restaurant.geofence_radius_m,
                 )
                 raise QueueReportLocationOutOfGeofenceError()
+
+        dt = to_app_tz(datetime.fromtimestamp(data.geo_timestamp, tz=UTC))
+
+        meal_period = await self.meal_period_service.resolve(ru_id=restaurant.id, at=dt)
+
+        snapshot = await self.snapshot_repo.get_by_ru_id_and_meal_period(
+            ru_id=restaurant.id, meal_period=meal_period
+        )
+
+        confidence_score = ConfidenceScoreService.calculate_confidence_score(
+            lat=data.lat,
+            lng=data.lng,
+            is_mock_location=data.is_mock_location,
+            accuracy_m=data.accuracy_m,
+            report_status=data.status,
+            snapshot=snapshot,
+        )
 
         try:
             queue_report = await self.repo.create(

@@ -113,39 +113,41 @@ elif distance >= 1.5: score -= 0.15   # divergência moderada
 > O `ConfidenceScoreService` roda **antes** do recálculo de background — lê o snapshot do estado anterior ao relato, que é o consenso vigente no momento da chegada.
 
 #### Model (`app/models/queue_snapshot.py`)
-- [ ] Adicionar `avg_status_value: Mapped[float | None]` — `nullable=True`, sem default
-- [ ] Adicionar `CheckConstraint("avg_status_value BETWEEN 0.0 AND 3.0 OR avg_status_value IS NULL", name="ck_avg_status_value_range")`
-- [ ] `null` quando `current_status` é `NO_DATA` ou `FOOD_ENDED`
+- [x] `avg_status_value: Mapped[Decimal | None]` — `nullable=True`, sem default, `Numeric(3, 2)`
+- [x] `CheckConstraint("avg_status_value IS NULL OR (avg_status_value >= 0.00 AND avg_status_value <= 3.00)", name="ck_avg_status_value_range")`
+- [x] `None` quando `current_status` é `NO_DATA` ou `FOOD_ENDED`
 
 #### Migration (Alembic)
-- [ ] `alembic revision --autogenerate -m "add avg_status_value to queue_snapshots"`
-- [ ] Verificar: tipo `FLOAT`, `nullable=True`, sem `server_default`
+- [x] `add_column` com `Numeric(precision=3, scale=2)`, `nullable=True`, sem `server_default`
+- [x] `create_check_constraint` adicionado manualmente (Alembic não detecta constraints em tabelas existentes)
+- [x] `downgrade`: drop constraint antes de drop column
 
 #### `SnapshotStatusService`
-- [ ] `_compute_status` passa a retornar `tuple[SnapshotStatusEnum, Decimal, float | None]`
-  - Terceiro elemento: `total_weighted_value / total_weight` (antes do `round`) com scorable reports; `None` nos paths de `NO_DATA` e `FOOD_ENDED`
-- [ ] Atualizar `calculate_snapshot_status` para desempacotar o terceiro elemento com `_`
-- [ ] Atualizar `update_snapshot` para persistir `avg_status_value`
+- [x] `_compute_status` retorna `tuple[SnapshotStatusEnum, Decimal, Decimal | None]`
+  - Terceiro elemento: `total_weighted_value / total_weight` quantizado em `Decimal("0.01")`, antes do `round()` inteiro; `None` em todos os paths `NO_DATA` e `FOOD_ENDED`
+- [x] `calculate_snapshot_status` desempacota o terceiro elemento com `_`
+- [x] `update_snapshot` persiste `snapshot.avg_status_value = new_avg_status_value`
 
 #### `ConfidenceScoreService`
-- [ ] Adicionar parâmetro `snapshot: QueueSnapshot | None` ao método de cálculo
-- [ ] Implementar penalidade — skip se `snapshot is None` ou `snapshot.avg_status_value is None`
+- [x] `report_status: ReportStatusEnum | None = None` — parâmetro opcional para retrocompatibilidade
+- [x] `snapshot: QueueSnapshot | None = None` — parâmetro opcional
+- [x] Dois tiers: `distance >= 2.0` → −0.25 (`divergencia_severa`); `distance >= 1.5` → −0.15 (`divergencia_moderada`)
+- [x] Skip se `snapshot is None`, `avg_status_value is None`, `report_status is None` ou `report_status not in STATUS_MAP_VALUE` (ex: FOOD_ENDED)
 
 #### `QueueReportService`
-- [ ] Verificar ordem do pipeline — `meal_period` deve ser inferido **antes** do cálculo do score:
-  `valida geofence → infere meal_period → busca snapshot → calcula confidence_score → persiste`
-- [ ] Buscar snapshot via `snapshot_repo.get_by_ru_id_and_meal_period` após inferir `meal_period`
-- [ ] Passar snapshot para `ConfidenceScoreService`
+- [x] Pipeline: geofence → meal_period → snapshot → confidence_score → persiste
+- [x] `snapshot_repo.get_by_ru_id_and_meal_period` chamado após inferir `meal_period`
+- [x] `snapshot` passado para `ConfidenceScoreService.calculate_confidence_score`
+- [x] `snapshot_repo: QueueSnapshotRepository` injetado via `__init__` e `QueueReportServiceDep`
 
 #### Schemas
-- `avg_status_value` não será exposto na API — campo interno. Nenhuma alteração nos schemas.
+- [x] `avg_status_value` não exposto — ausente de `QueueSnapshotResponse`, `QueueSnapshotBulkItem` e `SnapshotUpdatedEvent`
 
 #### Testes
-- [ ] `test_queue_snapshot_model` — constraint `ck_avg_status_value_range`
-- [ ] `test_snapshot_status_service` — `_compute_status` retorna valor bruto correto; `None` em `NO_DATA`/`FOOD_ENDED`; `update_snapshot` persiste o campo
-- [ ] `test_confidence_score_service` — penalidade `−0.25` (distância ≥ 2), `−0.15` (≥ 1.5), sem penalidade com `avg_status_value = None` ou `snapshot = None`
-- [ ] `test_queue_report_service` — snapshot buscado após `meal_period`, passado ao `ConfidenceScoreService`
-- [ ] Atualizar testes de todas as classes que usam `ConfidenceScoreService` para incluir o parâmetro `snapshot`
+- [x] `test_snapshot_status_service` — `_compute_status` retorna `None` em `NO_DATA`/`FOOD_ENDED`; valor contínuo correto com relatos; `update_snapshot` persiste o campo
+- [x] `test_confidence_score_service` — penalidade `−0.25` (≥ 2), `−0.15` (≥ 1.5), sem penalidade com `avg_status_value = None`, `snapshot = None`, `report_status = None` e `FOOD_ENDED`
+- [x] `test_queue_report_service` — `snapshot_repo` presente no conftest; snapshot passado ao `ConfidenceScoreService` com `report_status` correto
+- [x] Testes de `TestComputeStatus` atualizados para desempacotar 3 valores do tuple
 
 ### 2. Métricas gerais (`GET /v1/metrics/summary`)
 

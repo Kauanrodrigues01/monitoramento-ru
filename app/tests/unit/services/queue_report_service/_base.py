@@ -42,6 +42,7 @@ def _setup_full_happy_path(
     mock_meal_period_service,
     restaurant,
     meal_period=MealPeriodEnum.LUNCH,
+    mock_snapshot_repo=None,
 ) -> QueueReport:
     """Configures all mocks for the happy path. Returns the mocked QueueReport."""
     queue_report = _make_queue_report(ru_id=restaurant.id, meal_period=meal_period)
@@ -49,4 +50,6 @@ def _setup_full_happy_path(
     mock_meal_period_service.resolve.return_value = meal_period
     mock_repo.get_last_by_device_hash_within_minutes.return_value = None
     mock_repo.create.return_value = queue_report
+    if mock_snapshot_repo is not None:
+        mock_snapshot_repo.get_by_ru_id_and_meal_period.return_value = None
     return queue_report

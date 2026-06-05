@@ -162,7 +162,7 @@ class TestGetTemporalWeight:
 class TestComputeStatus:
     @freeze_time(_NOW)
     def test_empty_reports_returns_no_data_with_full_confidence(self, service):
-        status, conf = service._compute_status([])
+        status, conf, _ = service._compute_status([])
         assert status == SnapshotStatusEnum.NO_DATA
         assert conf == Decimal("1.00")
 
@@ -172,7 +172,7 @@ class TestComputeStatus:
             _make_report(status=ReportStatusEnum.FOOD_ENDED, seconds_ago=60)
             for _ in range(3)
         ]
-        status, _ = service._compute_status(reports)
+        status, _, _ = service._compute_status(reports)
         assert status == SnapshotStatusEnum.FOOD_ENDED
 
     @freeze_time(_NOW)
@@ -181,7 +181,7 @@ class TestComputeStatus:
             _make_report(status=ReportStatusEnum.FOOD_ENDED, seconds_ago=60)
             for _ in range(5)
         ]
-        status, _ = service._compute_status(reports)
+        status, _, _ = service._compute_status(reports)
         assert status == SnapshotStatusEnum.FOOD_ENDED
 
     @freeze_time(_NOW)
@@ -190,7 +190,7 @@ class TestComputeStatus:
             _make_report(status=ReportStatusEnum.FOOD_ENDED, seconds_ago=60),
             _make_report(status=ReportStatusEnum.FOOD_ENDED, seconds_ago=120),
         ]
-        status, _ = service._compute_status(reports)
+        status, _, _ = service._compute_status(reports)
         assert status != SnapshotStatusEnum.FOOD_ENDED
 
     @freeze_time(_NOW)
@@ -200,7 +200,7 @@ class TestComputeStatus:
             _make_report(status=ReportStatusEnum.FOOD_ENDED, seconds_ago=400),  # > 5min
             _make_report(status=ReportStatusEnum.FOOD_ENDED, seconds_ago=500),  # > 5min
         ]
-        status, _ = service._compute_status(reports)
+        status, _, _ = service._compute_status(reports)
         assert status != SnapshotStatusEnum.FOOD_ENDED
 
     @freeze_time(_NOW)
@@ -209,7 +209,7 @@ class TestComputeStatus:
             _make_report(status=ReportStatusEnum.FOOD_ENDED, seconds_ago=300)
             for _ in range(3)
         ]
-        status, _ = service._compute_status(reports)
+        status, _, _ = service._compute_status(reports)
         assert status == SnapshotStatusEnum.FOOD_ENDED
 
     @freeze_time(_NOW)
@@ -231,7 +231,7 @@ class TestComputeStatus:
                 seconds_ago=60,
             ),
         ]
-        _, conf = service._compute_status(reports)
+        _, conf, _ = service._compute_status(reports)
         # (1.00 + 0.50 + 0.50) / 3 = 0.6666... → 0.67
         assert conf == Decimal("0.67")
 
@@ -242,31 +242,31 @@ class TestComputeStatus:
             _make_report(status=ReportStatusEnum.FOOD_ENDED, seconds_ago=60),
             _make_report(status=ReportStatusEnum.FOOD_ENDED, seconds_ago=120),
         ]
-        status, _ = service._compute_status(reports)
+        status, _, _ = service._compute_status(reports)
         assert status == SnapshotStatusEnum.NO_DATA
 
     @freeze_time(_NOW)
     def test_no_queue_reports_return_no_queue_status(self, service):
         reports = [_make_report(status=ReportStatusEnum.NO_QUEUE, seconds_ago=30)]
-        status, _ = service._compute_status(reports)
+        status, _, _ = service._compute_status(reports)
         assert status == SnapshotStatusEnum.NO_QUEUE
 
     @freeze_time(_NOW)
     def test_small_reports_return_small_status(self, service):
         reports = [_make_report(status=ReportStatusEnum.SMALL, seconds_ago=30)]
-        status, _ = service._compute_status(reports)
+        status, _, _ = service._compute_status(reports)
         assert status == SnapshotStatusEnum.SMALL
 
     @freeze_time(_NOW)
     def test_medium_reports_return_medium_status(self, service):
         reports = [_make_report(status=ReportStatusEnum.MEDIUM, seconds_ago=30)]
-        status, _ = service._compute_status(reports)
+        status, _, _ = service._compute_status(reports)
         assert status == SnapshotStatusEnum.MEDIUM
 
     @freeze_time(_NOW)
     def test_large_reports_return_large_status(self, service):
         reports = [_make_report(status=ReportStatusEnum.LARGE, seconds_ago=30)]
-        status, _ = service._compute_status(reports)
+        status, _, _ = service._compute_status(reports)
         assert status == SnapshotStatusEnum.LARGE
 
     @freeze_time(_NOW)
@@ -276,7 +276,7 @@ class TestComputeStatus:
             _make_report(status=ReportStatusEnum.SMALL, seconds_ago=30),
             _make_report(status=ReportStatusEnum.LARGE, seconds_ago=30),
         ]
-        status, _ = service._compute_status(reports)
+        status, _, _ = service._compute_status(reports)
         assert status == SnapshotStatusEnum.MEDIUM
 
     @freeze_time(_NOW)
@@ -287,7 +287,7 @@ class TestComputeStatus:
             _make_report(status=ReportStatusEnum.LARGE, seconds_ago=30),
             _make_report(status=ReportStatusEnum.LARGE, seconds_ago=30),
         ]
-        status, _ = service._compute_status(reports)
+        status, _, _ = service._compute_status(reports)
         assert status == SnapshotStatusEnum.LARGE
 
     @freeze_time(_NOW)
@@ -297,7 +297,7 @@ class TestComputeStatus:
             _make_report(status=ReportStatusEnum.LARGE, seconds_ago=30),
             _make_report(status=ReportStatusEnum.FOOD_ENDED, seconds_ago=30),
         ]
-        status, _ = service._compute_status(reports)
+        status, _, _ = service._compute_status(reports)
         assert status == SnapshotStatusEnum.LARGE
 
     @freeze_time(_NOW)
@@ -311,7 +311,7 @@ class TestComputeStatus:
             ],
             _make_report(status=ReportStatusEnum.LARGE, seconds_ago=480),
         ]
-        status, _ = service._compute_status(reports)
+        status, _, _ = service._compute_status(reports)
         assert status == SnapshotStatusEnum.NO_QUEUE
 
     @freeze_time(_NOW)
@@ -326,7 +326,7 @@ class TestComputeStatus:
             _make_report(status=ReportStatusEnum.NO_QUEUE, seconds_ago=540),  # 9min
             _make_report(status=ReportStatusEnum.LARGE, seconds_ago=720),  # 12min
         ]
-        status, _ = service._compute_status(reports)
+        status, _, _ = service._compute_status(reports)
         assert status == SnapshotStatusEnum.NO_QUEUE
 
     @freeze_time(_NOW)
@@ -340,7 +340,7 @@ class TestComputeStatus:
                 seconds_ago=30,
             )
         ]
-        _, conf = service._compute_status(reports)
+        _, conf, _ = service._compute_status(reports)
         # avg = (0.95 * 0.50) / 0.95 = 0.50
         assert conf == Decimal("0.50")
 
@@ -363,14 +363,14 @@ class TestComputeStatus:
                 seconds_ago=200,
             ),
         ]
-        _, conf = service._compute_status(reports)
+        _, conf, _ = service._compute_status(reports)
         assert conf == Decimal("0.79")
 
     @freeze_time(_NOW)
     def test_no_data_path_returns_confidence_1_00(self, service):
         # Sem scorable (só FOOD_ENDED sem quórum) → NO_DATA → confidence padrão 1.00
         reports = [_make_report(status=ReportStatusEnum.FOOD_ENDED, seconds_ago=60)]
-        _, conf = service._compute_status(reports)
+        _, conf, _ = service._compute_status(reports)
         assert conf == Decimal("1.00")
 
     @freeze_time(_NOW)
@@ -385,9 +385,86 @@ class TestComputeStatus:
                 seconds_ago=30,
             )
         ]
-        status, conf = service._compute_status(reports)
+        status, conf, _ = service._compute_status(reports)
         assert status == SnapshotStatusEnum.NO_DATA
         assert conf == Decimal("1.00")
+
+    # avg_status_value
+
+    @freeze_time(_NOW)
+    def test_avg_status_value_is_none_when_no_reports(self, service):
+        _, _, avg = service._compute_status([])
+        assert avg is None
+
+    @freeze_time(_NOW)
+    def test_avg_status_value_is_none_on_food_ended_path(self, service):
+        reports = [
+            _make_report(status=ReportStatusEnum.FOOD_ENDED, seconds_ago=60)
+            for _ in range(3)
+        ]
+        _, _, avg = service._compute_status(reports)
+        assert avg is None
+
+    @freeze_time(_NOW)
+    def test_avg_status_value_is_none_when_no_scorable_reports(self, service):
+        # Apenas FOOD_ENDED sem quorum → NO_DATA path
+        reports = [_make_report(status=ReportStatusEnum.FOOD_ENDED, seconds_ago=60)]
+        _, _, avg = service._compute_status(reports)
+        assert avg is None
+
+    @freeze_time(_NOW)
+    def test_avg_status_value_equals_status_value_for_single_report(self, service):
+        # Único relato SMALL (valor=1) → avg_status_value deve ser 1.00
+        reports = [_make_report(status=ReportStatusEnum.SMALL, seconds_ago=30)]
+        _, _, avg = service._compute_status(reports)
+        assert avg == Decimal("1.00")
+
+    @freeze_time(_NOW)
+    def test_avg_status_value_is_continuous_before_integer_rounding(self, service):
+        # 3 × SMALL(1) + 1 × MEDIUM(2) com pesos iguais → média = 1.25
+        # round(1.25) = 1 → status=SMALL, mas avg_status_value deve ser 1.25 (contínuo)
+        reports = [
+            _make_report(status=ReportStatusEnum.SMALL, confidence_score=Decimal("1.00"), seconds_ago=30),
+            _make_report(status=ReportStatusEnum.SMALL, confidence_score=Decimal("1.00"), seconds_ago=30),
+            _make_report(status=ReportStatusEnum.SMALL, confidence_score=Decimal("1.00"), seconds_ago=30),
+            _make_report(status=ReportStatusEnum.MEDIUM, confidence_score=Decimal("1.00"), seconds_ago=30),
+        ]
+        status, _, avg = service._compute_status(reports)
+        assert status == SnapshotStatusEnum.SMALL
+        assert avg is not None
+        # valor contínuo deve estar entre SMALL(1) e MEDIUM(2)
+        assert Decimal("1.00") < avg < Decimal("2.00")
+
+    @freeze_time(_NOW)
+    def test_avg_status_value_diverges_from_rounded_status(self, service):
+        # SMALL(1) com peso 3 + MEDIUM(2) com peso 1 → média = (3+2)/4 = 1.25 → status=SMALL
+        reports = [
+            _make_report(
+                status=ReportStatusEnum.SMALL,
+                confidence_score=Decimal("1.00"),
+                seconds_ago=30,  # peso 0.95
+            ),
+            _make_report(
+                status=ReportStatusEnum.SMALL,
+                confidence_score=Decimal("1.00"),
+                seconds_ago=30,
+            ),
+            _make_report(
+                status=ReportStatusEnum.SMALL,
+                confidence_score=Decimal("1.00"),
+                seconds_ago=30,
+            ),
+            _make_report(
+                status=ReportStatusEnum.MEDIUM,
+                confidence_score=Decimal("1.00"),
+                seconds_ago=30,
+            ),
+        ]
+        status, _, avg = service._compute_status(reports)
+        assert status == SnapshotStatusEnum.SMALL
+        # avg = (1+1+1+2)/4 = 1.25 → arredonda para 1 (SMALL), mas avg_status_value ≠ 1
+        assert avg is not None
+        assert avg < Decimal("2.00")  # valor contínuo menor que MEDIUM
 
 
 # ── TestCalculateSnapshotStatus ───────────────────────────────────────────────
@@ -680,6 +757,44 @@ class TestUpdateSnapshot:
         )
         await service.update_snapshot(1)
         assert snap.confidence_score == Decimal("1.00")
+
+    @freeze_time(_NOW)
+    async def test_avg_status_value_persisted_on_snapshot(
+        self,
+        service,
+        mock_restaurant_repo,
+        mock_meal_period_service,
+        mock_report_repo,
+        mock_snapshot_repo,
+    ):
+        reports = [_make_report(status=ReportStatusEnum.SMALL, seconds_ago=30)]
+        _, snap = self._setup_happy_path(
+            mock_restaurant_repo,
+            mock_meal_period_service,
+            mock_report_repo,
+            mock_snapshot_repo,
+            reports=reports,
+        )
+        await service.update_snapshot(1)
+        assert snap.avg_status_value == Decimal("1.00")
+
+    async def test_avg_status_value_is_none_when_no_reports(
+        self,
+        service,
+        mock_restaurant_repo,
+        mock_meal_period_service,
+        mock_report_repo,
+        mock_snapshot_repo,
+    ):
+        _, snap = self._setup_happy_path(
+            mock_restaurant_repo,
+            mock_meal_period_service,
+            mock_report_repo,
+            mock_snapshot_repo,
+            reports=[],
+        )
+        await service.update_snapshot(1)
+        assert snap.avg_status_value is None
 
     async def test_commits_db_session_after_update(
         self,

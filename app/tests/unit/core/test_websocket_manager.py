@@ -86,6 +86,17 @@ class TestDeviceIdEnforcement:
 
         ws1.close.assert_called_once_with(code=1000)
 
+    async def test_second_connection_succeeds_even_if_old_close_raises(self):
+        manager = WebSocketManager()
+        ws1, ws2 = _make_ws(), _make_ws()
+        ws1.close.side_effect = Exception("conexão já morta")
+
+        await manager.connect(ws1, "snapshots", device_id="dev-abc")
+        await manager.connect(ws2, "snapshots", device_id="dev-abc")  # não deve levantar
+
+        assert ws2 in manager.rooms["snapshots"]
+        assert manager._device_connections["dev-abc"] is ws2
+
     async def test_second_connection_same_device_removes_old_from_room(self):
         manager = WebSocketManager()
         ws1, ws2 = _make_ws(), _make_ws()

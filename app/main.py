@@ -63,6 +63,10 @@ _TAGS_METADATA = [
             "calculado a partir dos relatórios recentes e do horário de funcionamento.\n\n"
         ),
     },
+    {
+        "name": "Metrics",
+        "description": "Métricas agregadas do sistema para uso em dashboards.\n\n",
+    },
 ]
 
 app = FastAPI(

@@ -21,3 +21,6 @@ QUEUE_REPORT_RATE_LIMIT = "20/minute"
 
 # Rate limit para conexões WebSocket — previne brute force de abertura de conexões
 WS_CONNECT_RATE_LIMIT = "20/minute"
+
+# Rate limit para o endpoint de métricas — endpoint público, leve mas agregado
+METRICS_RATE_LIMIT = "30/minute"

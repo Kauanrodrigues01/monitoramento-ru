@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.core.settings import settings
 
+from .endpoints.metrics import router as metrics_router
 from .endpoints.queue_reports import router as queue_reports_router
 from .endpoints.queue_snapshots import router as queue_snapshots_router
 from .endpoints.websocket import router as websocket_router
@@ -18,6 +19,7 @@ if settings.DEBUG:
 
     api_router.include_router(debug_router)
 
+api_router.include_router(metrics_router)
 api_router.include_router(restaurants_router)
 api_router.include_router(restaurant_schedules_router)
 api_router.include_router(restaurant_schedule_exceptions_router)

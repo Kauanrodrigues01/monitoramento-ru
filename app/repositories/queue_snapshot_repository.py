@@ -38,3 +38,8 @@ class QueueSnapshotRepository:
         )
         result = await self.db_session.execute(query)
         return result.scalars().all()
+
+    async def list_all(self) -> list[QueueSnapshot]:
+        """Retorna todos os snapshots (todos os restaurantes e períodos)."""
+        result = await self.db_session.execute(select(QueueSnapshot))
+        return result.scalars().all()

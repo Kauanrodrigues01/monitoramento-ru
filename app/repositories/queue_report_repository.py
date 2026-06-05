@@ -1,10 +1,10 @@
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.datetime_utils import utc_now
+from app.core.datetime_utils import to_app_tz, utc_now
 from app.core.settings import settings
 from app.models.queue_reports import QueueReport
 from app.models.restaurant import MealPeriodEnum
@@ -91,3 +91,30 @@ class QueueReportRepository:
             .order_by(QueueReport.created_at.desc())
         )
         return result.scalars().all()
+
+    async def count_within_minutes(self, minutes: int) -> int:
+        """Conta relatos de todos os restaurantes nos últimos `minutes` minutos."""
+        cutoff = utc_now() - timedelta(minutes=minutes)
+        query = (
+            select(func.count())
+            .select_from(QueueReport)
+            .where(QueueReport.created_at >= cutoff)
+        )
+        result = await self.db_session.scalar(query)
+        return result or 0
+
+    async def count_today(self) -> int:
+        """Conta relatos criados hoje no fuso horário da aplicação."""
+        now = to_app_tz(utc_now())
+        day_start = datetime(now.year, now.month, now.day, tzinfo=now.tzinfo)
+        day_end = day_start + timedelta(days=1)
+        query = (
+            select(func.count())
+            .select_from(QueueReport)
+            .where(
+                QueueReport.created_at >= day_start,
+                QueueReport.created_at < day_end,
+            )
+        )
+        result = await self.db_session.scalar(query)
+        return result or 0

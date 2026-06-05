@@ -66,15 +66,15 @@ class WebSocketManager:
         )
 
     async def broadcast(self, room: str, payload: str) -> None:
-        conexoes_mortas = []
+        dead_connections = []
 
         for websocket in self.rooms[room]:
             try:
                 await websocket.send_text(payload)
             except Exception:
-                conexoes_mortas.append(websocket)
+                dead_connections.append(websocket)
 
-        for websocket in conexoes_mortas:
+        for websocket in dead_connections:
             self.disconnect(websocket=websocket, room=room)
 
 

@@ -95,11 +95,7 @@
 - [x] Prioridade: `CLOSED` sem `meal_period` (dia inteiro) → `CLOSED/CUSTOM_HOURS` com `meal_period` correspondente
 - [x] Testes: exceção `CLOSED` dia inteiro, `CUSTOM_HOURS` por período, sem exceção, fora do horário, restaurante inexistente
 
----
-
-## 🔲 Pendente — ordenado por prioridade
-
-### 1. Penalidade por divergência com o snapshot vigente (`ConfidenceScoreService`)
+### Penalidade por divergência com o snapshot vigente (`ConfidenceScoreService`)
 
 Usar `avg_status_value` do snapshot para penalizar relatos que divergem do consenso atual:
 
@@ -149,7 +145,11 @@ elif distance >= 1.5: score -= 0.15   # divergência moderada
 - [x] `test_queue_report_service` — `snapshot_repo` presente no conftest; snapshot passado ao `ConfidenceScoreService` com `report_status` correto
 - [x] Testes de `TestComputeStatus` atualizados para desempacotar 3 valores do tuple
 
-### 2. Métricas gerais (`GET /v1/metrics/summary`)
+---
+
+## 🔲 Pendente — ordenado por prioridade
+
+### 1. Métricas gerais (`GET /v1/metrics/summary`)
 
 Visão agregada do sistema para o painel principal do frontend.
 
@@ -158,6 +158,7 @@ Visão agregada do sistema para o painel principal do frontend.
   "total_active_restaurants": 3,
   "open_now": 2,
   "reports_last_15m": 14,
+  "reports_today": 42,
   "status_distribution": {
     "NO_QUEUE": 1, "SMALL": 1, "MEDIUM": 0,
     "LARGE": 0, "FOOD_ENDED": 0, "NO_DATA": 1
@@ -171,15 +172,16 @@ Visão agregada do sistema para o painel principal do frontend.
 | `total_active_restaurants` | `COUNT` de `restaurants` com `is_active=true` |
 | `open_now` | Snapshots com `meal_period` vigente |
 | `reports_last_15m` | `SUM(reports_last_15m)` dos snapshots do período vigente |
+| `reports_today` | `COUNT`de `queue reports` do dia corrente |
 | `status_distribution` | `COUNT GROUP BY current_status` dos snapshots vigentes |
 | `avg_confidence` | Média de `confidence_score` dos snapshots com `current_status != NO_DATA` |
 
-- [ ] Schema `MetricsSummaryResponse`
-- [ ] `MetricsService.get_summary()` — queries diretas via `QueueSnapshotRepository` e `RestaurantRepository`; sem cache no MVP
-- [ ] Endpoint público, rate limit 30 req/min
-- [ ] Testes: contagem de ativos, `open_now`, `reports_last_15m`, `status_distribution`, `avg_confidence` exclui `NO_DATA`
+- [x] Schema `MetricsSummaryResponse`
+- [x] `MetricsService.get_summary()` — queries diretas via `QueueSnapshotRepository` e `RestaurantRepository`; sem cache no MVP
+- [x] Endpoint público, rate limit 30 req/min
+- [x] Testes: contagem de ativos, `open_now`, `reports_last_15m`, `reports_today`, `status_distribution`, `avg_confidence` exclui `NO_DATA`
 
-### 3. Métricas por restaurante (`GET /v1/restaurants/{public_id}/metrics`)
+### 2. Métricas por restaurante (`GET /v1/restaurants/{public_id}/metrics`)
 
 Dados de atividade do dia corrente para a página de detalhe.
 
@@ -204,11 +206,33 @@ Dados de atividade do dia corrente para a página de detalhe.
 - [ ] Endpoint público, rate limit 30 req/min; retorna `404` se restaurante não existir; métricas zeradas se sem relatos hoje
 - [ ] Testes: relatos do dia corrente no timezone correto, `avg_confidence_today = null` sem relatos, `dominant_status` por hora, `404` para restaurante inexistente
 
-### 4. Refactoring
+### 3. Refactoring
 - [ ] Extrair `_get_restaurant_by_public_id_or_error` — duplicado em `QueueReportService`, `RestaurantScheduleService`, `RestaurantScheduleExceptionService` e `QueueSnapshotService`. Candidato a `RestaurantResolverMixin` ou `app/services/_utils.py`. Teste em `test_get_restaurant_or_error.py` já cobre o comportamento.
 - [ ] Atualizar testes das classes afetadas
 
-### 5. Testes de integração
+### 4. Testes de models (constraints e invariantes)
+
+> Requerem banco de dados real — executar junto com testes de integração.
+
+- [ ] `QueueSnapshot` — `ck_avg_status_value_range`: rejeita valores fora de `[0.00, 3.00]`; aceita `NULL`
+- [ ] `QueueSnapshot` — `ck_reports_last_15m_positive`: rejeita valores negativos
+- [ ] `QueueSnapshot` — `ck_confidence_score`: rejeita valores fora do intervalo definido
+- [ ] `QueueReport` — constraint de `device_hash` e `ip_hash` (SHA-256 hexdigest de 64 chars)
+- [ ] Cascade `ondelete` — deletar `Restaurant` remove `QueueSnapshot` e `QueueReport`
+
+### 5. Testes de repositories (queries com banco real)
+
+> Unit tests com mock de sessão têm valor baixo aqui — as queries só são verificáveis com PostgreSQL real. Adicionar quando o banco estiver disponível no CI.
+
+- [ ] `QueueReportRepository.get_last_by_device_hash_within_minutes` — janela de tempo correta; ignora relatos fora da janela
+- [ ] `QueueReportRepository.list_recent_by_period` — filtra por `ru_id`, `meal_period` e data; respeita `limit`/`offset`
+- [ ] `QueueSnapshotRepository.get_by_ru_id_and_meal_period` — chave composta; retorna `None` quando não existe
+- [ ] `RestaurantRepository.get_by_public_id` — retorna `None` para UUID inexistente; ignora restaurantes inativos
+
+### 6. Testes de integração (endpoints)
+
+> Requerem banco + redis + app rodando. Adicionar serviço PostgreSQL no CI antes de habilitar.
+
 - [ ] `restaurants.py`
 - [ ] `restaurant_schedules.py`
 - [ ] `restaurant_schedule_exceptions.py`

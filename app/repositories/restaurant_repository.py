@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.restaurant import Restaurant
@@ -9,6 +9,15 @@ from app.models.restaurant import Restaurant
 class RestaurantRepository:
     def __init__(self, db_session: AsyncSession):
         self.db_session = db_session
+
+    async def count_active(self) -> int:
+        query = (
+            select(func.count())
+            .select_from(Restaurant)
+            .where(Restaurant.is_active.is_(True))
+        )
+        result = await self.db_session.scalar(query)
+        return result
 
     async def get_by_id(self, id: int) -> Restaurant | None:
         query = select(Restaurant).where(Restaurant.id == id)

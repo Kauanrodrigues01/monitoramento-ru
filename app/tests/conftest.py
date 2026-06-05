@@ -16,7 +16,7 @@ TestAsyncSessionLocal = async_sessionmaker(
 
 # scope="session" - executa 1 vez por execução inteira do pytest. É executado 1 vez a cada comando pytest
 # autouse=True - executa essa fixture automaticamente sem precisar chamar
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 async def prepare_database():
     """
     pytest inicia

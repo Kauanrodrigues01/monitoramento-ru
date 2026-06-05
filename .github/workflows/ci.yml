@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  quality-and-tests:
+    runs-on: ubuntu-latest
+
+    env:
+      DB_USER: ci
+      DB_PASSWORD: ci
+      DB_NAME: ci
+      ADMIN_API_KEY: ci-admin-key
+      APP_GEO_SECRET: ci-geo-secret
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install dependencies
+        run: pip install -r requirements_dev.txt
+
+      - name: Check formatting
+        run: ruff format --check .
+
+      - name: Run lint
+        run: ruff check .
+
+      - name: Run unit tests
+        run: |
+          pytest -vv \
+            --cov=app \
+            --cov-report=term-missing \
+            --cov-report=xml

@@ -19,3 +19,4 @@ exclude_lines =
 
 skip_empty = True
 show_missing = True
+fail_under = 85

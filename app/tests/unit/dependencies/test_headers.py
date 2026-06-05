@@ -1,5 +1,3 @@
-import pytest
-
 from app.dependencies.headers import get_device_id_header
 
 

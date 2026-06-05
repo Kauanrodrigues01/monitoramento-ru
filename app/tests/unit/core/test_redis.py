@@ -22,7 +22,9 @@ class TestGetRedis:
 
     async def test_singleton_returns_same_instance_on_second_call(self):
         mock_client = MagicMock()
-        with patch("app.core.redis.aioredis.from_url", return_value=mock_client) as mock_from_url:
+        with patch(
+            "app.core.redis.aioredis.from_url", return_value=mock_client
+        ) as mock_from_url:
             r1 = await redis_module.get_redis()
             r2 = await redis_module.get_redis()
 

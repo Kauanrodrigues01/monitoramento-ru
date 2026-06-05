@@ -3,9 +3,8 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
-from uuid import UUID, uuid4
+from uuid import uuid4
 
-import pytest
 
 from app.models.queue_snapshot import SnapshotStatusEnum
 from app.models.restaurant import MealPeriodEnum
@@ -37,10 +36,16 @@ class TestPublishSnapshot:
         snapshot = _make_snapshot()
 
         with (
-            patch("app.services.websocket_service.get_redis", new_callable=AsyncMock, return_value=mock_redis),
+            patch(
+                "app.services.websocket_service.get_redis",
+                new_callable=AsyncMock,
+                return_value=mock_redis,
+            ),
             patch("app.services.websocket_service.utc_now", return_value=_NOW),
         ):
-            await SnapshotWebSocketService.publish_snapshot(snapshot, _RESTAURANT_PUBLIC_ID)
+            await SnapshotWebSocketService.publish_snapshot(
+                snapshot, _RESTAURANT_PUBLIC_ID
+            )
 
         channel = mock_redis.publish.call_args[0][0]
         assert channel == "snapshots"
@@ -50,10 +55,16 @@ class TestPublishSnapshot:
         snapshot = _make_snapshot()
 
         with (
-            patch("app.services.websocket_service.get_redis", new_callable=AsyncMock, return_value=mock_redis),
+            patch(
+                "app.services.websocket_service.get_redis",
+                new_callable=AsyncMock,
+                return_value=mock_redis,
+            ),
             patch("app.services.websocket_service.utc_now", return_value=_NOW),
         ):
-            await SnapshotWebSocketService.publish_snapshot(snapshot, _RESTAURANT_PUBLIC_ID)
+            await SnapshotWebSocketService.publish_snapshot(
+                snapshot, _RESTAURANT_PUBLIC_ID
+            )
 
         payload = json.loads(mock_redis.publish.call_args[0][1])
         assert payload["type"] == "snapshot_updated"
@@ -63,10 +74,16 @@ class TestPublishSnapshot:
         snapshot = _make_snapshot()
 
         with (
-            patch("app.services.websocket_service.get_redis", new_callable=AsyncMock, return_value=mock_redis),
+            patch(
+                "app.services.websocket_service.get_redis",
+                new_callable=AsyncMock,
+                return_value=mock_redis,
+            ),
             patch("app.services.websocket_service.utc_now", return_value=_NOW),
         ):
-            await SnapshotWebSocketService.publish_snapshot(snapshot, _RESTAURANT_PUBLIC_ID)
+            await SnapshotWebSocketService.publish_snapshot(
+                snapshot, _RESTAURANT_PUBLIC_ID
+            )
 
         payload = json.loads(mock_redis.publish.call_args[0][1])
         assert payload["restaurant_public_id"] == str(_RESTAURANT_PUBLIC_ID)
@@ -76,10 +93,16 @@ class TestPublishSnapshot:
         snapshot = _make_snapshot(current_status=SnapshotStatusEnum.LARGE)
 
         with (
-            patch("app.services.websocket_service.get_redis", new_callable=AsyncMock, return_value=mock_redis),
+            patch(
+                "app.services.websocket_service.get_redis",
+                new_callable=AsyncMock,
+                return_value=mock_redis,
+            ),
             patch("app.services.websocket_service.utc_now", return_value=_NOW),
         ):
-            await SnapshotWebSocketService.publish_snapshot(snapshot, _RESTAURANT_PUBLIC_ID)
+            await SnapshotWebSocketService.publish_snapshot(
+                snapshot, _RESTAURANT_PUBLIC_ID
+            )
 
         payload = json.loads(mock_redis.publish.call_args[0][1])
         assert payload["current_status"] == "LARGE"
@@ -89,10 +112,16 @@ class TestPublishSnapshot:
         snapshot = _make_snapshot(meal_period=MealPeriodEnum.DINNER)
 
         with (
-            patch("app.services.websocket_service.get_redis", new_callable=AsyncMock, return_value=mock_redis),
+            patch(
+                "app.services.websocket_service.get_redis",
+                new_callable=AsyncMock,
+                return_value=mock_redis,
+            ),
             patch("app.services.websocket_service.utc_now", return_value=_NOW),
         ):
-            await SnapshotWebSocketService.publish_snapshot(snapshot, _RESTAURANT_PUBLIC_ID)
+            await SnapshotWebSocketService.publish_snapshot(
+                snapshot, _RESTAURANT_PUBLIC_ID
+            )
 
         payload = json.loads(mock_redis.publish.call_args[0][1])
         assert payload["meal_period"] == "DINNER"
@@ -102,10 +131,16 @@ class TestPublishSnapshot:
         snapshot = _make_snapshot(reports_last_15m=7)
 
         with (
-            patch("app.services.websocket_service.get_redis", new_callable=AsyncMock, return_value=mock_redis),
+            patch(
+                "app.services.websocket_service.get_redis",
+                new_callable=AsyncMock,
+                return_value=mock_redis,
+            ),
             patch("app.services.websocket_service.utc_now", return_value=_NOW),
         ):
-            await SnapshotWebSocketService.publish_snapshot(snapshot, _RESTAURANT_PUBLIC_ID)
+            await SnapshotWebSocketService.publish_snapshot(
+                snapshot, _RESTAURANT_PUBLIC_ID
+            )
 
         payload = json.loads(mock_redis.publish.call_args[0][1])
         assert payload["reports_last_15m"] == 7
@@ -115,10 +150,16 @@ class TestPublishSnapshot:
         snapshot = _make_snapshot(confidence_score=Decimal("0.75"))
 
         with (
-            patch("app.services.websocket_service.get_redis", new_callable=AsyncMock, return_value=mock_redis),
+            patch(
+                "app.services.websocket_service.get_redis",
+                new_callable=AsyncMock,
+                return_value=mock_redis,
+            ),
             patch("app.services.websocket_service.utc_now", return_value=_NOW),
         ):
-            await SnapshotWebSocketService.publish_snapshot(snapshot, _RESTAURANT_PUBLIC_ID)
+            await SnapshotWebSocketService.publish_snapshot(
+                snapshot, _RESTAURANT_PUBLIC_ID
+            )
 
         payload = json.loads(mock_redis.publish.call_args[0][1])
         assert payload["confidence_score"] == 0.75
@@ -128,10 +169,16 @@ class TestPublishSnapshot:
         snapshot = _make_snapshot(last_report_at=None)
 
         with (
-            patch("app.services.websocket_service.get_redis", new_callable=AsyncMock, return_value=mock_redis),
+            patch(
+                "app.services.websocket_service.get_redis",
+                new_callable=AsyncMock,
+                return_value=mock_redis,
+            ),
             patch("app.services.websocket_service.utc_now", return_value=_NOW),
         ):
-            await SnapshotWebSocketService.publish_snapshot(snapshot, _RESTAURANT_PUBLIC_ID)
+            await SnapshotWebSocketService.publish_snapshot(
+                snapshot, _RESTAURANT_PUBLIC_ID
+            )
 
         payload = json.loads(mock_redis.publish.call_args[0][1])
         assert payload["data_freshness_minutes"] is None
@@ -142,10 +189,16 @@ class TestPublishSnapshot:
         snapshot = _make_snapshot(last_report_at=last_report_at)
 
         with (
-            patch("app.services.websocket_service.get_redis", new_callable=AsyncMock, return_value=mock_redis),
+            patch(
+                "app.services.websocket_service.get_redis",
+                new_callable=AsyncMock,
+                return_value=mock_redis,
+            ),
             patch("app.services.websocket_service.utc_now", return_value=_NOW),
         ):
-            await SnapshotWebSocketService.publish_snapshot(snapshot, _RESTAURANT_PUBLIC_ID)
+            await SnapshotWebSocketService.publish_snapshot(
+                snapshot, _RESTAURANT_PUBLIC_ID
+            )
 
         payload = json.loads(mock_redis.publish.call_args[0][1])
         assert payload["data_freshness_minutes"] == 10
@@ -157,10 +210,16 @@ class TestPublishSnapshot:
         snapshot = _make_snapshot(last_report_at=last_report_at)
 
         with (
-            patch("app.services.websocket_service.get_redis", new_callable=AsyncMock, return_value=mock_redis),
+            patch(
+                "app.services.websocket_service.get_redis",
+                new_callable=AsyncMock,
+                return_value=mock_redis,
+            ),
             patch("app.services.websocket_service.utc_now", return_value=_NOW),
         ):
-            await SnapshotWebSocketService.publish_snapshot(snapshot, _RESTAURANT_PUBLIC_ID)
+            await SnapshotWebSocketService.publish_snapshot(
+                snapshot, _RESTAURANT_PUBLIC_ID
+            )
 
         payload = json.loads(mock_redis.publish.call_args[0][1])
         assert payload["data_freshness_minutes"] == 0
@@ -170,10 +229,16 @@ class TestPublishSnapshot:
         snapshot = _make_snapshot()
 
         with (
-            patch("app.services.websocket_service.get_redis", new_callable=AsyncMock, return_value=mock_redis),
+            patch(
+                "app.services.websocket_service.get_redis",
+                new_callable=AsyncMock,
+                return_value=mock_redis,
+            ),
             patch("app.services.websocket_service.utc_now", return_value=_NOW),
         ):
-            await SnapshotWebSocketService.publish_snapshot(snapshot, _RESTAURANT_PUBLIC_ID)
+            await SnapshotWebSocketService.publish_snapshot(
+                snapshot, _RESTAURANT_PUBLIC_ID
+            )
 
         payload = json.loads(mock_redis.publish.call_args[0][1])
         assert payload["updated_at"].startswith(_NOW.strftime("%Y-%m-%dT%H:%M:%S"))
@@ -183,9 +248,15 @@ class TestPublishSnapshot:
         snapshot = _make_snapshot()
 
         with (
-            patch("app.services.websocket_service.get_redis", new_callable=AsyncMock, return_value=mock_redis),
+            patch(
+                "app.services.websocket_service.get_redis",
+                new_callable=AsyncMock,
+                return_value=mock_redis,
+            ),
             patch("app.services.websocket_service.utc_now", return_value=_NOW),
         ):
-            await SnapshotWebSocketService.publish_snapshot(snapshot, _RESTAURANT_PUBLIC_ID)
+            await SnapshotWebSocketService.publish_snapshot(
+                snapshot, _RESTAURANT_PUBLIC_ID
+            )
 
         mock_redis.publish.assert_called_once()

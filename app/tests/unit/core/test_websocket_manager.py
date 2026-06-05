@@ -1,6 +1,5 @@
 from unittest.mock import AsyncMock
 
-import pytest
 
 from app.core.websocket_manager import WebSocketManager
 

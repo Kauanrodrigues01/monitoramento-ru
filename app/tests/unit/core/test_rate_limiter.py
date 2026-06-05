@@ -1,11 +1,12 @@
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from app.core.rate_limiter import rate_limit_key
 
 
-def _make_request(device_id: str | None = None, client_ip: str | None = None) -> MagicMock:
+def _make_request(
+    device_id: str | None = None, client_ip: str | None = None
+) -> MagicMock:
     request = MagicMock()
     request.headers = {}
     if device_id is not None:
@@ -33,7 +34,9 @@ class TestRateLimitKey:
     def test_falls_back_to_ip_when_device_id_absent(self):
         request = _make_request()
 
-        with patch("app.core.rate_limiter.IpService.get_client_ip", return_value="192.168.1.1"):
+        with patch(
+            "app.core.rate_limiter.IpService.get_client_ip", return_value="192.168.1.1"
+        ):
             result = rate_limit_key(request)
 
         assert result == "ip:192.168.1.1"
@@ -41,7 +44,9 @@ class TestRateLimitKey:
     def test_falls_back_to_ip_when_device_id_is_empty_string(self):
         request = _make_request(device_id="")
 
-        with patch("app.core.rate_limiter.IpService.get_client_ip", return_value="10.0.0.5"):
+        with patch(
+            "app.core.rate_limiter.IpService.get_client_ip", return_value="10.0.0.5"
+        ):
             result = rate_limit_key(request)
 
         assert result == "ip:10.0.0.5"
@@ -58,7 +63,9 @@ class TestRateLimitKey:
         request = _make_request()
         resolved_ip = "203.0.113.42"
 
-        with patch("app.core.rate_limiter.IpService.get_client_ip", return_value=resolved_ip):
+        with patch(
+            "app.core.rate_limiter.IpService.get_client_ip", return_value=resolved_ip
+        ):
             result = rate_limit_key(request)
 
         assert result == f"ip:{resolved_ip}"

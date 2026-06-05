@@ -1,6 +1,5 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 
 from app.core.pubsub import start_pubsub_listener
 
@@ -26,7 +25,11 @@ class TestStartPubsubListener:
         mock_redis, mock_pubsub = _make_redis_with_pubsub()
 
         with (
-            patch("app.core.pubsub.get_redis", new_callable=AsyncMock, return_value=mock_redis),
+            patch(
+                "app.core.pubsub.get_redis",
+                new_callable=AsyncMock,
+                return_value=mock_redis,
+            ),
             patch("app.core.pubsub.manager"),
         ):
             await start_pubsub_listener()
@@ -41,12 +44,18 @@ class TestStartPubsubListener:
         mock_manager = AsyncMock()
 
         with (
-            patch("app.core.pubsub.get_redis", new_callable=AsyncMock, return_value=mock_redis),
+            patch(
+                "app.core.pubsub.get_redis",
+                new_callable=AsyncMock,
+                return_value=mock_redis,
+            ),
             patch("app.core.pubsub.manager", mock_manager),
         ):
             await start_pubsub_listener()
 
-        mock_manager.broadcast.assert_called_once_with(room="snapshots", payload=payload)
+        mock_manager.broadcast.assert_called_once_with(
+            room="snapshots", payload=payload
+        )
 
     async def test_ignores_subscribe_confirmation_messages(self):
         mock_redis, _ = _make_redis_with_pubsub(
@@ -55,7 +64,11 @@ class TestStartPubsubListener:
         mock_manager = AsyncMock()
 
         with (
-            patch("app.core.pubsub.get_redis", new_callable=AsyncMock, return_value=mock_redis),
+            patch(
+                "app.core.pubsub.get_redis",
+                new_callable=AsyncMock,
+                return_value=mock_redis,
+            ),
             patch("app.core.pubsub.manager", mock_manager),
         ):
             await start_pubsub_listener()
@@ -69,7 +82,11 @@ class TestStartPubsubListener:
         mock_manager = AsyncMock()
 
         with (
-            patch("app.core.pubsub.get_redis", new_callable=AsyncMock, return_value=mock_redis),
+            patch(
+                "app.core.pubsub.get_redis",
+                new_callable=AsyncMock,
+                return_value=mock_redis,
+            ),
             patch("app.core.pubsub.manager", mock_manager),
         ):
             await start_pubsub_listener()
@@ -87,7 +104,11 @@ class TestStartPubsubListener:
         mock_manager = AsyncMock()
 
         with (
-            patch("app.core.pubsub.get_redis", new_callable=AsyncMock, return_value=mock_redis),
+            patch(
+                "app.core.pubsub.get_redis",
+                new_callable=AsyncMock,
+                return_value=mock_redis,
+            ),
             patch("app.core.pubsub.manager", mock_manager),
         ):
             await start_pubsub_listener()
@@ -107,9 +128,15 @@ class TestStartPubsubListener:
         mock_manager = AsyncMock()
 
         with (
-            patch("app.core.pubsub.get_redis", new_callable=AsyncMock, return_value=mock_redis),
+            patch(
+                "app.core.pubsub.get_redis",
+                new_callable=AsyncMock,
+                return_value=mock_redis,
+            ),
             patch("app.core.pubsub.manager", mock_manager),
         ):
             await start_pubsub_listener()
 
-        mock_manager.broadcast.assert_called_once_with(room="snapshots", payload=payload)
+        mock_manager.broadcast.assert_called_once_with(
+            room="snapshots", payload=payload
+        )

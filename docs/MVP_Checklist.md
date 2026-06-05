@@ -29,7 +29,7 @@
   - [x] Restaurant existe e está ativo
   - [x] Assinatura HMAC com `APP_GEO_SECRET` — payload: `{lat:.6f}|{lng:.6f}|{accuracy_m:.1f}|{geo_timestamp}` — retorna `400` se inválida
   - [x] Janela temporal da assinatura: 60s por padrão (`GEO_SIGNATURE_MAX_SKEW_SECONDS` no `.env`)
-  - [x] Cooldown por dispositivo (`device_hash`): 2 min por padrão (`QUEUE_REPORT_COOLDOWN_MINUTES` no `.env`) — header `X-Device-ID` obrigatório; resolve o problema de NAT em redes compartilhadas
+  - [x] Cooldown por dispositivo (`device_hash`): 2 min por padrão (`QUEUE_REPORT_COOLDOWN_MINUTES` no `.env`) — header `X-Device-ID` obrigatório; resolve NAT em redes compartilhadas
   - [x] Verificação de horário de funcionamento (exceptions → schedules)
   - [x] Geofence (distância vs `geofence_radius_m` do restaurant)
 - [x] Campos inferidos pelo servidor: `meal_period`, `ip_hash`, `device_hash`, `confidence_score`
@@ -42,11 +42,13 @@
 - [x] `accuracy_m` nulo ou 0 → −0.30
 - [x] `accuracy_m` entre 20m e 50m → −0.15
 - [x] Coordenadas com precisão suspeita (lat/lng redondos) → −0.25
+- [x] Divergência com `avg_status_value` do snapshot: distância ≥ 2 → −0.25; distância ≥ 1.5 → −0.15
 - [x] Score mínimo: 0.05 (floor)
+- [x] Testes de schemas e services
 
 ### Rate Limit (slowapi — `app/core/rate_limits.py`)
 - [x] Aplicado a todos os endpoints
-- [x] Chave efetiva: `X-Device-ID` → IP → `"anonymous"` (implementado em `app/core/rate_limiter.py`)
+- [x] Chave efetiva: `X-Device-ID` → IP → `"anonymous"` (`app/core/rate_limiter.py`)
 
 | Endpoint | Limite | Chave |
 |---|---|---|
@@ -66,7 +68,8 @@
 | `GET /restaurants/{id}/status` | 60 req/min | IP |
 
 ### Queue Snapshots
-- [x] Model `queue_snapshot`
+- [x] Model `queue_snapshot` com `avg_status_value: Mapped[Decimal | None]` (`Numeric(3,2)`, nullable)
+- [x] `CheckConstraint` em `avg_status_value`: `NULL` ou entre `0.00` e `3.00`
 - [x] Seed: cada restaurant recebe 2 snapshots (`LUNCH/NO_DATA`, `DINNER/NO_DATA`)
 - [x] Criação automática dos snapshots junto com o restaurant (`POST /restaurants`)
 - [x] Schemas, repository, service
@@ -74,116 +77,41 @@
 - [x] Testes de schemas e service
 
 ### Cálculo de status do snapshot (`SnapshotStatusService`) — [spec](snapshot_status_spec.md)
-- [x] Fórmula de média ponderada: `current_status = Σ(status_value × temporal_weight × confidence_score) / Σ(temporal_weight × confidence_score)`
+- [x] Fórmula: `current_status = Σ(status_value × temporal_weight × confidence_score) / Σ(temporal_weight × confidence_score)`
 - [x] Janela adaptativa: 5 min (≥5 relatos) / 10 min (≥3 relatos) / 15 min (demais)
 - [x] Pesos temporais: ≤60s → 0.95 / ≤5min → 0.70 / ≤10min → 0.40 / >10min → 0.15
 - [x] `FOOD_ENDED` com quórum separado: ≥3 relatos em 5 min sobrescreve o cálculo normal
-- [x] `confidence_score` médio persistido no snapshot após cada recálculo
+- [x] `_compute_status` retorna `tuple[SnapshotStatusEnum, Decimal, Decimal | None]` — terceiro elemento é `avg_status_value`; `None` em `NO_DATA` e `FOOD_ENDED`
+- [x] `confidence_score` e `avg_status_value` persistidos no snapshot após cada recálculo
 - [x] Atualização assíncrona via Background Tasks do FastAPI *(evolui para Celery task depois)*
 - [x] Testes do `SnapshotStatusService`
 
 ### WebSocket — status em tempo real
 - [x] Endpoint `WS /api/v1/ws/snapshots` — canal global; todos os restaurantes num único stream
-- [x] A cada recálculo de snapshot: publica evento via Redis pub/sub → `WebSocketManager` transmite para todos os clientes conectados
-- [x] Payload do evento `SnapshotUpdatedEvent`: `restaurant_public_id`, `meal_period`, `current_status`, `reports_last_15m`, `last_report_at`, `confidence_score`, `data_freshness_minutes`, `updated_at`
-- [x] Rate limit: 20 conexões/min por IP (SlowAPI) + 1 conexão ativa por `device_id` (conexão antiga encerrada ao receber nova)
-- [x] Testes: `WebSocketManager`, `pubsub`, `SnapshotWebSocketService`, endpoint e integração com `update_snapshot`
+- [x] A cada recálculo de snapshot: publica via Redis pub/sub → `WebSocketManager` transmite para clientes conectados
+- [x] Payload `SnapshotUpdatedEvent`: `restaurant_public_id`, `meal_period`, `current_status`, `reports_last_15m`, `last_report_at`, `confidence_score`, `data_freshness_minutes`, `updated_at`
+- [x] Rate limit: 20 conexões/min por IP + 1 conexão ativa por `device_id` (conexão antiga encerrada ao receber nova)
+- [x] Testes: `WebSocketManager`, `pubsub`, `SnapshotWebSocketService`, endpoint, integração com `update_snapshot`
 
 ### Exceção de horário vigente
 - [x] Endpoint `GET /v1/restaurants/{public_id}/schedule-exceptions/current` — público, 60 req/min
-- [x] Retorna a exceção ativa para hoje e para o `meal_period` corrente, ou `{ "exception": null }`
+- [x] Retorna exceção ativa para hoje e `meal_period` corrente, ou `{ "exception": null }`
 - [x] Prioridade: `CLOSED` sem `meal_period` (dia inteiro) → `CLOSED/CUSTOM_HOURS` com `meal_period` correspondente
-- [x] Testes: exceção `CLOSED` dia inteiro, `CUSTOM_HOURS` por período, sem exceção, fora do horário, restaurante inexistente
+- [x] Testes: `CLOSED` dia inteiro, `CUSTOM_HOURS` por período, sem exceção, fora do horário, restaurante inexistente
 
-### Penalidade por divergência com o snapshot vigente (`ConfidenceScoreService`)
-
-Usar `avg_status_value` do snapshot para penalizar relatos que divergem do consenso atual:
-
-```python
-distance = abs(STATUS_MAP_VALUE[report.status] - snapshot.avg_status_value)
-if distance >= 2:     score -= 0.25   # divergência severa
-elif distance >= 1.5: score -= 0.15   # divergência moderada
-# sem penalidade se avg_status_value é null (NO_DATA ou FOOD_ENDED)
-```
-
-> O `ConfidenceScoreService` roda **antes** do recálculo de background — lê o snapshot do estado anterior ao relato, que é o consenso vigente no momento da chegada.
-
-#### Model (`app/models/queue_snapshot.py`)
-- [x] `avg_status_value: Mapped[Decimal | None]` — `nullable=True`, sem default, `Numeric(3, 2)`
-- [x] `CheckConstraint("avg_status_value IS NULL OR (avg_status_value >= 0.00 AND avg_status_value <= 3.00)", name="ck_avg_status_value_range")`
-- [x] `None` quando `current_status` é `NO_DATA` ou `FOOD_ENDED`
-
-#### Migration (Alembic)
-- [x] `add_column` com `Numeric(precision=3, scale=2)`, `nullable=True`, sem `server_default`
-- [x] `create_check_constraint` adicionado manualmente (Alembic não detecta constraints em tabelas existentes)
-- [x] `downgrade`: drop constraint antes de drop column
-
-#### `SnapshotStatusService`
-- [x] `_compute_status` retorna `tuple[SnapshotStatusEnum, Decimal, Decimal | None]`
-  - Terceiro elemento: `total_weighted_value / total_weight` quantizado em `Decimal("0.01")`, antes do `round()` inteiro; `None` em todos os paths `NO_DATA` e `FOOD_ENDED`
-- [x] `calculate_snapshot_status` desempacota o terceiro elemento com `_`
-- [x] `update_snapshot` persiste `snapshot.avg_status_value = new_avg_status_value`
-
-#### `ConfidenceScoreService`
-- [x] `report_status: ReportStatusEnum | None = None` — parâmetro opcional para retrocompatibilidade
-- [x] `snapshot: QueueSnapshot | None = None` — parâmetro opcional
-- [x] Dois tiers: `distance >= 2.0` → −0.25 (`divergencia_severa`); `distance >= 1.5` → −0.15 (`divergencia_moderada`)
-- [x] Skip se `snapshot is None`, `avg_status_value is None`, `report_status is None` ou `report_status not in STATUS_MAP_VALUE` (ex: FOOD_ENDED)
-
-#### `QueueReportService`
-- [x] Pipeline: geofence → meal_period → snapshot → confidence_score → persiste
-- [x] `snapshot_repo.get_by_ru_id_and_meal_period` chamado após inferir `meal_period`
-- [x] `snapshot` passado para `ConfidenceScoreService.calculate_confidence_score`
-- [x] `snapshot_repo: QueueSnapshotRepository` injetado via `__init__` e `QueueReportServiceDep`
-
-#### Schemas
-- [x] `avg_status_value` não exposto — ausente de `QueueSnapshotResponse`, `QueueSnapshotBulkItem` e `SnapshotUpdatedEvent`
-
-#### Testes
-- [x] `test_snapshot_status_service` — `_compute_status` retorna `None` em `NO_DATA`/`FOOD_ENDED`; valor contínuo correto com relatos; `update_snapshot` persiste o campo
-- [x] `test_confidence_score_service` — penalidade `−0.25` (≥ 2), `−0.15` (≥ 1.5), sem penalidade com `avg_status_value = None`, `snapshot = None`, `report_status = None` e `FOOD_ENDED`
-- [x] `test_queue_report_service` — `snapshot_repo` presente no conftest; snapshot passado ao `ConfidenceScoreService` com `report_status` correto
-- [x] Testes de `TestComputeStatus` atualizados para desempacotar 3 valores do tuple
+### Métricas gerais
+- [x] Endpoint `GET /v1/metrics/summary` — público, 30 req/min
+- [x] Schema `MetricsSummaryResponse`: `total_active_restaurants`, `open_now`, `reports_last_15m`, `reports_today`, `status_distribution`, `avg_confidence`
+- [x] `MetricsService.get_summary()` — queries diretas via repositórios; sem cache no MVP
+- [x] Testes: contagem de ativos, `open_now`, `reports_last_15m`, `reports_today`, `status_distribution`, `avg_confidence` exclui `NO_DATA`
 
 ---
 
 ## 🔲 Pendente — ordenado por prioridade
 
-### 1. Métricas gerais (`GET /v1/metrics/summary`)
+### 1. Métricas por restaurante (`GET /v1/restaurants/{public_id}/metrics`)
 
-Visão agregada do sistema para o painel principal do frontend.
-
-```json
-{
-  "total_active_restaurants": 3,
-  "open_now": 2,
-  "reports_last_15m": 14,
-  "reports_today": 42,
-  "status_distribution": {
-    "NO_QUEUE": 1, "SMALL": 1, "MEDIUM": 0,
-    "LARGE": 0, "FOOD_ENDED": 0, "NO_DATA": 1
-  },
-  "avg_confidence": 0.87
-}
-```
-
-| Campo | Origem |
-|---|---|
-| `total_active_restaurants` | `COUNT` de `restaurants` com `is_active=true` |
-| `open_now` | Snapshots com `meal_period` vigente |
-| `reports_last_15m` | `SUM(reports_last_15m)` dos snapshots do período vigente |
-| `reports_today` | `COUNT`de `queue reports` do dia corrente |
-| `status_distribution` | `COUNT GROUP BY current_status` dos snapshots vigentes |
-| `avg_confidence` | Média de `confidence_score` dos snapshots com `current_status != NO_DATA` |
-
-- [x] Schema `MetricsSummaryResponse`
-- [x] `MetricsService.get_summary()` — queries diretas via `QueueSnapshotRepository` e `RestaurantRepository`; sem cache no MVP
-- [x] Endpoint público, rate limit 30 req/min
-- [x] Testes: contagem de ativos, `open_now`, `reports_last_15m`, `reports_today`, `status_distribution`, `avg_confidence` exclui `NO_DATA`
-
-### 2. Métricas por restaurante (`GET /v1/restaurants/{public_id}/metrics`)
-
-Dados de atividade do dia corrente para a página de detalhe.
+Dados de atividade do dia corrente para a página de detalhe do restaurante.
 
 ```json
 {
@@ -199,40 +127,36 @@ Dados de atividade do dia corrente para a página de detalhe.
 
 - `dominant_status` = status com maior soma de `confidence_score` na hora (moda ponderada)
 - `status_history_today` alimenta gráfico de linha ou sparkline no frontend
+- Retorna `404` se restaurante não existir; métricas zeradas se sem relatos hoje
 
 - [ ] Schema `RestaurantMetricsResponse`, `StatusHistoryEntry`
-- [ ] `QueueReportRepository.list_today_by_ru` — query com `created_at BETWEEN day_start AND day_end` (timezone `APP_TIMEZONE`)
+- [ ] `QueueReportRepository.list_today_by_ru` — `created_at BETWEEN day_start AND day_end` no timezone `APP_TIMEZONE`
 - [ ] `MetricsService.get_restaurant_metrics(ru_id, day)` — agrupa por hora em Python
-- [ ] Endpoint público, rate limit 30 req/min; retorna `404` se restaurante não existir; métricas zeradas se sem relatos hoje
-- [ ] Testes: relatos do dia corrente no timezone correto, `avg_confidence_today = null` sem relatos, `dominant_status` por hora, `404` para restaurante inexistente
+- [ ] Endpoint público, 30 req/min
+- [ ] Testes: relatos do dia no timezone correto, `avg_confidence_today = null` sem relatos, `dominant_status` por hora, `404` para restaurante inexistente
 
-### 3. Refactoring
+### 2. Refactoring
 - [ ] Extrair `_get_restaurant_by_public_id_or_error` — duplicado em `QueueReportService`, `RestaurantScheduleService`, `RestaurantScheduleExceptionService` e `QueueSnapshotService`. Candidato a `RestaurantResolverMixin` ou `app/services/_utils.py`. Teste em `test_get_restaurant_or_error.py` já cobre o comportamento.
 - [ ] Atualizar testes das classes afetadas
 
-### 4. Testes de models (constraints e invariantes)
+### 3. Testes com banco real
 
-> Requerem banco de dados real — executar junto com testes de integração.
+> Requerem PostgreSQL real (adicionar ao CI antes de habilitar).
 
-- [ ] `QueueSnapshot` — `ck_avg_status_value_range`: rejeita valores fora de `[0.00, 3.00]`; aceita `NULL`
-- [ ] `QueueSnapshot` — `ck_reports_last_15m_positive`: rejeita valores negativos
-- [ ] `QueueSnapshot` — `ck_confidence_score`: rejeita valores fora do intervalo definido
-- [ ] `QueueReport` — constraint de `device_hash` e `ip_hash` (SHA-256 hexdigest de 64 chars)
+#### Models — constraints e invariantes
+- [ ] `QueueSnapshot.ck_avg_status_value_range` — rejeita valores fora de `[0.00, 3.00]`; aceita `NULL`
+- [ ] `QueueSnapshot.ck_reports_last_15m_positive` — rejeita valores negativos
+- [ ] `QueueSnapshot.ck_confidence_score` — rejeita valores fora do intervalo definido
+- [ ] `QueueReport` — `device_hash` e `ip_hash` como SHA-256 hexdigest de 64 chars
 - [ ] Cascade `ondelete` — deletar `Restaurant` remove `QueueSnapshot` e `QueueReport`
 
-### 5. Testes de repositories (queries com banco real)
-
-> Unit tests com mock de sessão têm valor baixo aqui — as queries só são verificáveis com PostgreSQL real. Adicionar quando o banco estiver disponível no CI.
-
+#### Repositories — queries
 - [ ] `QueueReportRepository.get_last_by_device_hash_within_minutes` — janela de tempo correta; ignora relatos fora da janela
 - [ ] `QueueReportRepository.list_recent_by_period` — filtra por `ru_id`, `meal_period` e data; respeita `limit`/`offset`
-- [ ] `QueueSnapshotRepository.get_by_ru_id_and_meal_period` — chave composta; retorna `None` quando não existe
-- [ ] `RestaurantRepository.get_by_public_id` — retorna `None` para UUID inexistente; ignora restaurantes inativos
+- [ ] `QueueSnapshotRepository.get_by_ru_id_and_meal_period` — chave composta; `None` quando não existe
+- [ ] `RestaurantRepository.get_by_public_id` — `None` para UUID inexistente; ignora restaurantes inativos
 
-### 6. Testes de integração (endpoints)
-
-> Requerem banco + redis + app rodando. Adicionar serviço PostgreSQL no CI antes de habilitar.
-
+#### Integração — endpoints
 - [ ] `restaurants.py`
 - [ ] `restaurant_schedules.py`
 - [ ] `restaurant_schedule_exceptions.py`
@@ -249,7 +173,7 @@ Dados de atividade do dia corrente para a página de detalhe.
 
 ### Processamento assíncrono
 
-> **Broker:** RabbitMQ. Vantagens sobre Redis como broker: persistência de mensagens em disco, Dead Letter Queue nativa, Management UI em tempo real. Redis permanece exclusivo para cache.
+> **Broker:** RabbitMQ em vez de Redis. Persistência de mensagens em disco, Dead Letter Queue nativa e Management UI em tempo real. Redis permanece exclusivo para cache.
 
 #### Infraestrutura
 - [ ] Serviço `rabbitmq` no Docker Compose (`rabbitmq:3-management`, porta 15672)
@@ -268,19 +192,15 @@ Dados de atividade do dia corrente para a página de detalhe.
 - [ ] Testes do model e repository
 
 #### Tasks
-- [ ] **`close_meal_period_task(ru_id, meal_period, opens_at, closes_at)`** — ao atingir `closes_at`: enfileira `aggregate_meal_period_task` se houve relatos; reseta snapshot para `NO_DATA`; invalida cache Redis; publica `RU_CLOSED` via WebSocket
-- [ ] **`aggregate_meal_period_task(ru_id, meal_period, opens_at, closes_at)`** — processa relatos do período em buckets fixos de 10 min; UPSERT em `queue_aggregates_10m`
+- [ ] **`close_meal_period_task`** — ao atingir `closes_at`: enfileira `aggregate_meal_period_task` se houve relatos; reseta snapshot para `NO_DATA`; invalida cache Redis; publica `RU_CLOSED` via WebSocket
+- [ ] **`aggregate_meal_period_task`** — processa relatos do período em buckets fixos de 10 min; UPSERT em `queue_aggregates_10m`
 - [ ] **`FOOD_ENDED` override via Redis** — TTL explícito `min(30 min, tempo até closes_at)` em vez de remoção implícita por janela
-- [ ] **`sync_scheduled_tasks(ru_id, target_date)`** — no startup e a cada alteração de schedules: cria/atualiza `PeriodicTask` com `ClockedSchedule` para o `closes_at` de cada slot
+- [ ] **`sync_scheduled_tasks`** — no startup e a cada alteração de schedules: cria/atualiza `PeriodicTask` com `ClockedSchedule` para o `closes_at` de cada slot
 - [ ] Testes das tasks
 
-#### Job 2 — Cache semanal (domingos às 02:00)
-- [ ] Lê `queue_aggregates_10m`; aplica `normalize_for_query(opens_at, closes_at, bucket_size=10)`; calcula médias; salva no Redis `analytics:ru:{id}:weekly` (TTL 7 dias)
-- [ ] Endpoint `GET /v1/restaurants/{public_id}/prediction`
-
-#### Job 3 — Limpeza de dados *(em avaliação)*
-- [ ] Política: 90 dias para `queue_reports`, 365 dias para `queue_aggregates_10m` e `admin_audit_log`
-- [ ] Definir implementação: CrontabSchedule (Celery), pg_cron, ou script manual
+#### Jobs periódicos
+- [ ] **Job 2 — Cache semanal** (domingos às 02:00): lê `queue_aggregates_10m`, aplica `normalize_for_query(opens_at, closes_at, bucket_size=10)`, salva no Redis `analytics:ru:{id}:weekly` (TTL 7 dias). Endpoint: `GET /v1/restaurants/{public_id}/prediction`
+- [ ] **Job 3 — Limpeza de dados** *(em avaliação)*: 90 dias para `queue_reports`, 365 dias para `queue_aggregates_10m` e `admin_audit_log`. Implementação a definir: Celery CrontabSchedule, pg_cron ou script manual
 
 ### Confidence score — penalidades históricas
 - [ ] IP com histórico inconsistente *(requer `queue_aggregates_10m` populado)*

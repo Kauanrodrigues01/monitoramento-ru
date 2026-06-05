@@ -9,6 +9,7 @@ omit =
     */core/config.py
     */core/seed.py
     */dependencies/database.py
+    */seed_dev.py
 
 [report]
 exclude_lines =

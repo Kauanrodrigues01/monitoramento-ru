@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from freezegun import freeze_time
@@ -529,6 +529,14 @@ class TestCalculateSnapshotStatus:
 
 
 class TestUpdateSnapshot:
+    @pytest.fixture(autouse=True)
+    def mock_publish_snapshot(self):
+        with patch(
+            "app.services.snapshot_status_service.SnapshotWebSocketService.publish_snapshot",
+            new_callable=AsyncMock,
+        ) as mock:
+            yield mock
+
     def _setup_happy_path(
         self,
         mock_restaurant_repo,
@@ -786,6 +794,66 @@ class TestUpdateSnapshot:
         )
         await service.update_snapshot(5)
         mock_restaurant_repo.get_by_id.assert_called_once_with(5)
+
+    async def test_publish_snapshot_called_after_successful_update(
+        self,
+        service,
+        mock_restaurant_repo,
+        mock_meal_period_service,
+        mock_report_repo,
+        mock_snapshot_repo,
+        mock_publish_snapshot,
+    ):
+        self._setup_happy_path(
+            mock_restaurant_repo,
+            mock_meal_period_service,
+            mock_report_repo,
+            mock_snapshot_repo,
+        )
+        await service.update_snapshot(1)
+
+        mock_publish_snapshot.assert_called_once()
+
+    async def test_publish_snapshot_called_with_correct_snapshot_and_public_id(
+        self,
+        service,
+        mock_restaurant_repo,
+        mock_meal_period_service,
+        mock_report_repo,
+        mock_snapshot_repo,
+        mock_publish_snapshot,
+    ):
+        restaurant, snap = self._setup_happy_path(
+            mock_restaurant_repo,
+            mock_meal_period_service,
+            mock_report_repo,
+            mock_snapshot_repo,
+        )
+        await service.update_snapshot(1)
+
+        mock_publish_snapshot.assert_called_once_with(
+            snapshot=snap,
+            restaurant_public_id=restaurant.public_id,
+        )
+
+    async def test_publish_snapshot_not_called_when_snapshot_not_found(
+        self,
+        service,
+        mock_restaurant_repo,
+        mock_meal_period_service,
+        mock_report_repo,
+        mock_snapshot_repo,
+        mock_publish_snapshot,
+    ):
+        mock_restaurant_repo.get_by_id.return_value = RestaurantFactory.build(id=1)
+        mock_meal_period_service.resolve.return_value = MealPeriodEnum.LUNCH
+        mock_report_repo.list_recent_by_period_within_minutes.return_value = []
+        mock_snapshot_repo.get_by_ru_id_and_meal_period.return_value = None
+
+        with pytest.raises(QueueSnapshotNotFoundError):
+            await service.update_snapshot(1)
+
+        mock_publish_snapshot.assert_not_called()
 
     async def test_propagates_restaurant_closed_all_day_error(
         self, service, mock_restaurant_repo, mock_meal_period_service

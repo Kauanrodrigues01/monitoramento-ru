@@ -15,6 +15,7 @@ from app.exceptions.meal_period_exceptions import (
     OutsideMealHoursError,
     RestaurantClosedAllDayError,
 )
+from app.exceptions.header_exceptions import RequiredDeviceIdHeaderError
 from app.exceptions.queue_report_exceptions import (
     QueueReportLocationOutOfGeofenceError,
     QueueReportTooRecentError,
@@ -338,6 +339,66 @@ class TestCreateQueueReport_GeoSignature:
 
 
 # ── TestCreateQueueReport_Cooldown ────────────────────────────────────────────
+
+
+class TestCreateQueueReport_DeviceId:
+    async def test_missing_device_id_raises_required_device_id_header_error(
+        self,
+        service,
+        mock_restaurant_repo,
+        restaurant,
+        valid_payload,
+        background_tasks,
+    ):
+        mock_restaurant_repo.get_by_public_id.return_value = restaurant
+
+        with patch(_PATCH_GEO_SIG):
+            with pytest.raises(RequiredDeviceIdHeaderError):
+                await service.create_queue_report(
+                    restaurant.public_id, valid_payload, _IP, None, background_tasks
+                )
+
+    async def test_empty_device_id_raises_required_device_id_header_error(
+        self,
+        service,
+        mock_restaurant_repo,
+        restaurant,
+        valid_payload,
+        background_tasks,
+    ):
+        mock_restaurant_repo.get_by_public_id.return_value = restaurant
+
+        with patch(_PATCH_GEO_SIG):
+            with pytest.raises(RequiredDeviceIdHeaderError):
+                await service.create_queue_report(
+                    restaurant.public_id, valid_payload, _IP, "", background_tasks
+                )
+
+    async def test_device_hash_stored_as_sha256_of_device_id(
+        self,
+        service,
+        mock_repo,
+        mock_restaurant_repo,
+        mock_meal_period_service,
+        restaurant,
+        valid_payload,
+        background_tasks,
+    ):
+        _setup_full_happy_path(
+            mock_repo, mock_restaurant_repo, mock_meal_period_service, restaurant
+        )
+
+        with (
+            patch(_PATCH_GEO_SIG),
+            patch(_PATCH_HAVERSINE, return_value=50.0),
+            patch(_PATCH_CONFIDENCE, return_value=Decimal("1.00")),
+        ):
+            await service.create_queue_report(
+                restaurant.public_id, valid_payload, _IP, _DEVICE_ID, background_tasks
+            )
+
+        created: QueueReport = mock_repo.create.call_args[0][0]
+        assert created.device_hash == _DEVICE_HASH
 
 
 class TestCreateQueueReport_Cooldown:

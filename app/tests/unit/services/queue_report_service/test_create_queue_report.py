@@ -948,7 +948,10 @@ class TestCreateQueueReport_ConfidenceScore:
         background_tasks,
     ):
         _setup_full_happy_path(
-            mock_repo, mock_restaurant_repo, mock_meal_period_service, restaurant,
+            mock_repo,
+            mock_restaurant_repo,
+            mock_meal_period_service,
+            restaurant,
             mock_snapshot_repo=mock_snapshot_repo,
         )
 

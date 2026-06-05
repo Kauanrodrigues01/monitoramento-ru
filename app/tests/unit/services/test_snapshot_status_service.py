@@ -424,10 +424,26 @@ class TestComputeStatus:
         # 3 × SMALL(1) + 1 × MEDIUM(2) com pesos iguais → média = 1.25
         # round(1.25) = 1 → status=SMALL, mas avg_status_value deve ser 1.25 (contínuo)
         reports = [
-            _make_report(status=ReportStatusEnum.SMALL, confidence_score=Decimal("1.00"), seconds_ago=30),
-            _make_report(status=ReportStatusEnum.SMALL, confidence_score=Decimal("1.00"), seconds_ago=30),
-            _make_report(status=ReportStatusEnum.SMALL, confidence_score=Decimal("1.00"), seconds_ago=30),
-            _make_report(status=ReportStatusEnum.MEDIUM, confidence_score=Decimal("1.00"), seconds_ago=30),
+            _make_report(
+                status=ReportStatusEnum.SMALL,
+                confidence_score=Decimal("1.00"),
+                seconds_ago=30,
+            ),
+            _make_report(
+                status=ReportStatusEnum.SMALL,
+                confidence_score=Decimal("1.00"),
+                seconds_ago=30,
+            ),
+            _make_report(
+                status=ReportStatusEnum.SMALL,
+                confidence_score=Decimal("1.00"),
+                seconds_ago=30,
+            ),
+            _make_report(
+                status=ReportStatusEnum.MEDIUM,
+                confidence_score=Decimal("1.00"),
+                seconds_ago=30,
+            ),
         ]
         status, _, avg = service._compute_status(reports)
         assert status == SnapshotStatusEnum.SMALL

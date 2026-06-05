@@ -1,6 +1,9 @@
 from fastapi import APIRouter, Request
 
-from app.core.openapi_responses import INTERNAL_SERVER_ERROR_RESPONSE, RATE_LIMIT_RESPONSE
+from app.core.openapi_responses import (
+    INTERNAL_SERVER_ERROR_RESPONSE,
+    RATE_LIMIT_RESPONSE,
+)
 from app.core.rate_limiter import limiter
 from app.core.rate_limits import METRICS_RATE_LIMIT
 from app.dependencies.metrics_dependencies import MetricsServiceDep

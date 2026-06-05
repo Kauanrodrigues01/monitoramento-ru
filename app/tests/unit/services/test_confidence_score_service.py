@@ -546,6 +546,7 @@ class TestPenaltiesConstants:
 
 def _make_snapshot_with_avg(avg_status_value) -> object:
     from types import SimpleNamespace
+
     return SimpleNamespace(avg_status_value=avg_status_value)
 
 
@@ -561,7 +562,10 @@ class TestCalculateConfidenceScoreDivergencia:
             report_status=ReportStatusEnum.LARGE,
             snapshot=snapshot,
         )
-        assert result == Decimal("1.00") - PENALTIES["inconsistent_with_recent_history_severe"]
+        assert (
+            result
+            == Decimal("1.00") - PENALTIES["inconsistent_with_recent_history_severe"]
+        )
         assert result == Decimal("0.75")
 
     def test_penalidade_moderada_quando_distance_maior_ou_igual_a_1_5(self):
@@ -577,7 +581,10 @@ class TestCalculateConfidenceScoreDivergencia:
             report_status=ReportStatusEnum.MEDIUM,
             snapshot=snapshot,
         )
-        assert result == Decimal("1.00") - PENALTIES["inconsistent_with_recent_history_moderate"]
+        assert (
+            result
+            == Decimal("1.00") - PENALTIES["inconsistent_with_recent_history_moderate"]
+        )
         assert result == Decimal("0.85")
 
     def test_sem_penalidade_quando_distance_menor_que_1_5(self):
@@ -651,4 +658,7 @@ class TestCalculateConfidenceScoreDivergencia:
             report_status=ReportStatusEnum.LARGE,
             snapshot=snapshot,
         )
-        assert result == Decimal("1.00") - PENALTIES["inconsistent_with_recent_history_severe"]
+        assert (
+            result
+            == Decimal("1.00") - PENALTIES["inconsistent_with_recent_history_severe"]
+        )

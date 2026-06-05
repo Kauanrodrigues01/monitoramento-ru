@@ -54,7 +54,9 @@ def mock_meal_period_service():
 
 
 @pytest.fixture
-def service(mock_snapshot_repo, mock_report_repo, mock_restaurant_repo, mock_meal_period_service):
+def service(
+    mock_snapshot_repo, mock_report_repo, mock_restaurant_repo, mock_meal_period_service
+):
     return MetricsService(
         snapshot_repo=mock_snapshot_repo,
         report_repo=mock_report_repo,
@@ -66,7 +68,12 @@ def service(mock_snapshot_repo, mock_report_repo, mock_restaurant_repo, mock_mea
 class TestGetSummary:
     @pytest.mark.asyncio
     async def test_should_return_metrics_summary_response_schema(
-        self, service, mock_snapshot_repo, mock_report_repo, mock_restaurant_repo, mock_meal_period_service
+        self,
+        service,
+        mock_snapshot_repo,
+        mock_report_repo,
+        mock_restaurant_repo,
+        mock_meal_period_service,
     ):
         mock_restaurant_repo.count_active.return_value = 3
         mock_restaurant_repo.get_all.return_value = []
@@ -80,7 +87,12 @@ class TestGetSummary:
 
     @pytest.mark.asyncio
     async def test_should_return_total_active_restaurants(
-        self, service, mock_snapshot_repo, mock_report_repo, mock_restaurant_repo, mock_meal_period_service
+        self,
+        service,
+        mock_snapshot_repo,
+        mock_report_repo,
+        mock_restaurant_repo,
+        mock_meal_period_service,
     ):
         mock_restaurant_repo.count_active.return_value = 5
         mock_restaurant_repo.get_all.return_value = []
@@ -95,7 +107,12 @@ class TestGetSummary:
 
     @pytest.mark.asyncio
     async def test_should_count_open_now_for_each_restaurant(
-        self, service, mock_snapshot_repo, mock_report_repo, mock_restaurant_repo, mock_meal_period_service
+        self,
+        service,
+        mock_snapshot_repo,
+        mock_report_repo,
+        mock_restaurant_repo,
+        mock_meal_period_service,
     ):
         restaurants = [RestaurantFactory.build(id=i) for i in range(1, 4)]
         mock_restaurant_repo.count_active.return_value = 3
@@ -111,7 +128,12 @@ class TestGetSummary:
 
     @pytest.mark.asyncio
     async def test_should_exclude_closed_restaurants_from_open_now(
-        self, service, mock_snapshot_repo, mock_report_repo, mock_restaurant_repo, mock_meal_period_service
+        self,
+        service,
+        mock_snapshot_repo,
+        mock_report_repo,
+        mock_restaurant_repo,
+        mock_meal_period_service,
     ):
         restaurants = [RestaurantFactory.build(id=i) for i in range(1, 4)]
         mock_restaurant_repo.count_active.return_value = 3
@@ -127,7 +149,12 @@ class TestGetSummary:
 
     @pytest.mark.asyncio
     async def test_should_exclude_outside_meal_hours_from_open_now(
-        self, service, mock_snapshot_repo, mock_report_repo, mock_restaurant_repo, mock_meal_period_service
+        self,
+        service,
+        mock_snapshot_repo,
+        mock_report_repo,
+        mock_restaurant_repo,
+        mock_meal_period_service,
     ):
         restaurants = [RestaurantFactory.build(id=1), RestaurantFactory.build(id=2)]
         mock_restaurant_repo.count_active.return_value = 2
@@ -143,7 +170,12 @@ class TestGetSummary:
 
     @pytest.mark.asyncio
     async def test_should_exclude_meal_period_closed_from_open_now(
-        self, service, mock_snapshot_repo, mock_report_repo, mock_restaurant_repo, mock_meal_period_service
+        self,
+        service,
+        mock_snapshot_repo,
+        mock_report_repo,
+        mock_restaurant_repo,
+        mock_meal_period_service,
     ):
         restaurants = [RestaurantFactory.build(id=1)]
         mock_restaurant_repo.count_active.return_value = 1
@@ -159,7 +191,12 @@ class TestGetSummary:
 
     @pytest.mark.asyncio
     async def test_should_count_partial_open_restaurants(
-        self, service, mock_snapshot_repo, mock_report_repo, mock_restaurant_repo, mock_meal_period_service
+        self,
+        service,
+        mock_snapshot_repo,
+        mock_report_repo,
+        mock_restaurant_repo,
+        mock_meal_period_service,
     ):
         restaurants = [RestaurantFactory.build(id=i) for i in range(1, 4)]
         mock_restaurant_repo.count_active.return_value = 3
@@ -179,7 +216,12 @@ class TestGetSummary:
 
     @pytest.mark.asyncio
     async def test_should_call_count_within_minutes_with_15(
-        self, service, mock_snapshot_repo, mock_report_repo, mock_restaurant_repo, mock_meal_period_service
+        self,
+        service,
+        mock_snapshot_repo,
+        mock_report_repo,
+        mock_restaurant_repo,
+        mock_meal_period_service,
     ):
         mock_restaurant_repo.count_active.return_value = 0
         mock_restaurant_repo.get_all.return_value = []
@@ -194,7 +236,12 @@ class TestGetSummary:
 
     @pytest.mark.asyncio
     async def test_should_return_reports_today(
-        self, service, mock_snapshot_repo, mock_report_repo, mock_restaurant_repo, mock_meal_period_service
+        self,
+        service,
+        mock_snapshot_repo,
+        mock_report_repo,
+        mock_restaurant_repo,
+        mock_meal_period_service,
     ):
         mock_restaurant_repo.count_active.return_value = 0
         mock_restaurant_repo.get_all.return_value = []
@@ -209,7 +256,12 @@ class TestGetSummary:
 
     @pytest.mark.asyncio
     async def test_should_build_status_distribution_from_snapshots(
-        self, service, mock_snapshot_repo, mock_report_repo, mock_restaurant_repo, mock_meal_period_service
+        self,
+        service,
+        mock_snapshot_repo,
+        mock_report_repo,
+        mock_restaurant_repo,
+        mock_meal_period_service,
     ):
         snapshots = [
             _make_snapshot(current_status=SnapshotStatusEnum.SMALL),
@@ -233,7 +285,12 @@ class TestGetSummary:
 
     @pytest.mark.asyncio
     async def test_should_return_empty_status_distribution_when_no_snapshots(
-        self, service, mock_snapshot_repo, mock_report_repo, mock_restaurant_repo, mock_meal_period_service
+        self,
+        service,
+        mock_snapshot_repo,
+        mock_report_repo,
+        mock_restaurant_repo,
+        mock_meal_period_service,
     ):
         mock_restaurant_repo.count_active.return_value = 0
         mock_restaurant_repo.get_all.return_value = []
@@ -247,7 +304,12 @@ class TestGetSummary:
 
     @pytest.mark.asyncio
     async def test_should_return_none_avg_confidence_when_no_snapshots(
-        self, service, mock_snapshot_repo, mock_report_repo, mock_restaurant_repo, mock_meal_period_service
+        self,
+        service,
+        mock_snapshot_repo,
+        mock_report_repo,
+        mock_restaurant_repo,
+        mock_meal_period_service,
     ):
         mock_restaurant_repo.count_active.return_value = 0
         mock_restaurant_repo.get_all.return_value = []
@@ -261,11 +323,22 @@ class TestGetSummary:
 
     @pytest.mark.asyncio
     async def test_should_return_none_avg_confidence_when_all_snapshots_are_no_data(
-        self, service, mock_snapshot_repo, mock_report_repo, mock_restaurant_repo, mock_meal_period_service
+        self,
+        service,
+        mock_snapshot_repo,
+        mock_report_repo,
+        mock_restaurant_repo,
+        mock_meal_period_service,
     ):
         snapshots = [
-            _make_snapshot(current_status=SnapshotStatusEnum.NO_DATA, confidence_score=Decimal("0.50")),
-            _make_snapshot(current_status=SnapshotStatusEnum.NO_DATA, confidence_score=Decimal("1.00")),
+            _make_snapshot(
+                current_status=SnapshotStatusEnum.NO_DATA,
+                confidence_score=Decimal("0.50"),
+            ),
+            _make_snapshot(
+                current_status=SnapshotStatusEnum.NO_DATA,
+                confidence_score=Decimal("1.00"),
+            ),
         ]
         mock_restaurant_repo.count_active.return_value = 0
         mock_restaurant_repo.get_all.return_value = []
@@ -279,11 +352,22 @@ class TestGetSummary:
 
     @pytest.mark.asyncio
     async def test_should_exclude_no_data_snapshots_from_avg_confidence(
-        self, service, mock_snapshot_repo, mock_report_repo, mock_restaurant_repo, mock_meal_period_service
+        self,
+        service,
+        mock_snapshot_repo,
+        mock_report_repo,
+        mock_restaurant_repo,
+        mock_meal_period_service,
     ):
         snapshots = [
-            _make_snapshot(current_status=SnapshotStatusEnum.SMALL, confidence_score=Decimal("0.80")),
-            _make_snapshot(current_status=SnapshotStatusEnum.NO_DATA, confidence_score=Decimal("0.20")),
+            _make_snapshot(
+                current_status=SnapshotStatusEnum.SMALL,
+                confidence_score=Decimal("0.80"),
+            ),
+            _make_snapshot(
+                current_status=SnapshotStatusEnum.NO_DATA,
+                confidence_score=Decimal("0.20"),
+            ),
         ]
         mock_restaurant_repo.count_active.return_value = 0
         mock_restaurant_repo.get_all.return_value = []
@@ -297,11 +381,22 @@ class TestGetSummary:
 
     @pytest.mark.asyncio
     async def test_should_calculate_avg_confidence_across_scored_snapshots(
-        self, service, mock_snapshot_repo, mock_report_repo, mock_restaurant_repo, mock_meal_period_service
+        self,
+        service,
+        mock_snapshot_repo,
+        mock_report_repo,
+        mock_restaurant_repo,
+        mock_meal_period_service,
     ):
         snapshots = [
-            _make_snapshot(current_status=SnapshotStatusEnum.SMALL, confidence_score=Decimal("0.60")),
-            _make_snapshot(current_status=SnapshotStatusEnum.LARGE, confidence_score=Decimal("0.40")),
+            _make_snapshot(
+                current_status=SnapshotStatusEnum.SMALL,
+                confidence_score=Decimal("0.60"),
+            ),
+            _make_snapshot(
+                current_status=SnapshotStatusEnum.LARGE,
+                confidence_score=Decimal("0.40"),
+            ),
         ]
         mock_restaurant_repo.count_active.return_value = 0
         mock_restaurant_repo.get_all.return_value = []
@@ -315,12 +410,26 @@ class TestGetSummary:
 
     @pytest.mark.asyncio
     async def test_should_round_avg_confidence_to_two_decimal_places(
-        self, service, mock_snapshot_repo, mock_report_repo, mock_restaurant_repo, mock_meal_period_service
+        self,
+        service,
+        mock_snapshot_repo,
+        mock_report_repo,
+        mock_restaurant_repo,
+        mock_meal_period_service,
     ):
         snapshots = [
-            _make_snapshot(current_status=SnapshotStatusEnum.SMALL, confidence_score=Decimal("0.70")),
-            _make_snapshot(current_status=SnapshotStatusEnum.MEDIUM, confidence_score=Decimal("0.80")),
-            _make_snapshot(current_status=SnapshotStatusEnum.LARGE, confidence_score=Decimal("0.90")),
+            _make_snapshot(
+                current_status=SnapshotStatusEnum.SMALL,
+                confidence_score=Decimal("0.70"),
+            ),
+            _make_snapshot(
+                current_status=SnapshotStatusEnum.MEDIUM,
+                confidence_score=Decimal("0.80"),
+            ),
+            _make_snapshot(
+                current_status=SnapshotStatusEnum.LARGE,
+                confidence_score=Decimal("0.90"),
+            ),
         ]
         mock_restaurant_repo.count_active.return_value = 0
         mock_restaurant_repo.get_all.return_value = []
@@ -334,12 +443,26 @@ class TestGetSummary:
 
     @pytest.mark.asyncio
     async def test_should_include_all_non_no_data_statuses_in_avg_confidence(
-        self, service, mock_snapshot_repo, mock_report_repo, mock_restaurant_repo, mock_meal_period_service
+        self,
+        service,
+        mock_snapshot_repo,
+        mock_report_repo,
+        mock_restaurant_repo,
+        mock_meal_period_service,
     ):
         snapshots = [
-            _make_snapshot(current_status=SnapshotStatusEnum.NO_QUEUE, confidence_score=Decimal("1.00")),
-            _make_snapshot(current_status=SnapshotStatusEnum.FOOD_ENDED, confidence_score=Decimal("0.50")),
-            _make_snapshot(current_status=SnapshotStatusEnum.NO_DATA, confidence_score=Decimal("0.10")),
+            _make_snapshot(
+                current_status=SnapshotStatusEnum.NO_QUEUE,
+                confidence_score=Decimal("1.00"),
+            ),
+            _make_snapshot(
+                current_status=SnapshotStatusEnum.FOOD_ENDED,
+                confidence_score=Decimal("0.50"),
+            ),
+            _make_snapshot(
+                current_status=SnapshotStatusEnum.NO_DATA,
+                confidence_score=Decimal("0.10"),
+            ),
         ]
         mock_restaurant_repo.count_active.return_value = 0
         mock_restaurant_repo.get_all.return_value = []
@@ -353,7 +476,12 @@ class TestGetSummary:
 
     @pytest.mark.asyncio
     async def test_should_call_get_all_restaurants_with_only_active(
-        self, service, mock_snapshot_repo, mock_report_repo, mock_restaurant_repo, mock_meal_period_service
+        self,
+        service,
+        mock_snapshot_repo,
+        mock_report_repo,
+        mock_restaurant_repo,
+        mock_meal_period_service,
     ):
         mock_restaurant_repo.count_active.return_value = 0
         mock_restaurant_repo.get_all.return_value = []

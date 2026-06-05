@@ -38,7 +38,11 @@ class MetricsService:
             try:
                 await self.meal_period_service.resolve(ru_id=restaurant.id, at=now)
                 open_now += 1
-            except (RestaurantClosedAllDayError, OutsideMealHoursError, MealPeriodClosedError):
+            except (
+                RestaurantClosedAllDayError,
+                OutsideMealHoursError,
+                MealPeriodClosedError,
+            ):
                 pass
 
         reports_last_15m = await self.report_repo.count_within_minutes(minutes=15)

@@ -110,7 +110,9 @@ class TestMetricsSummaryResponseSchema:
 
     def test_should_preserve_status_distribution_keys(self):
         distribution = {"NO_QUEUE": 1, "SMALL": 3, "MEDIUM": 2, "LARGE": 0}
-        data = MetricsSummaryResponse(**_build_payload(status_distribution=distribution))
+        data = MetricsSummaryResponse(
+            **_build_payload(status_distribution=distribution)
+        )
 
         assert data.status_distribution == distribution
 

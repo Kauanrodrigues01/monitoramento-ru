@@ -92,7 +92,9 @@ class TestDeviceIdEnforcement:
         ws1.close.side_effect = Exception("conexão já morta")
 
         await manager.connect(ws1, "snapshots", device_id="dev-abc")
-        await manager.connect(ws2, "snapshots", device_id="dev-abc")  # não deve levantar
+        await manager.connect(
+            ws2, "snapshots", device_id="dev-abc"
+        )  # não deve levantar
 
         assert ws2 in manager.rooms["snapshots"]
         assert manager._device_connections["dev-abc"] is ws2

@@ -29,8 +29,12 @@ class WebSocketManager:
 
                 try:
                     await old_ws.close(code=1000)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug(
+                        "Erro ao fechar websocket anterior do device '%s': %s",
+                        device_id,
+                        exc,
+                    )
 
                 self.rooms[room].discard(old_ws)
                 self._ws_to_device.pop(old_ws, None)

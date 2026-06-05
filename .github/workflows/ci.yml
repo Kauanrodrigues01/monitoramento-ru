@@ -2,14 +2,10 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
-      - develop
+    branches: [main, develop]
 
   pull_request:
-    branches:
-      - main
-      - develop
+    branches: [main, develop]
 
 jobs:
   quality-and-tests:
@@ -23,30 +19,28 @@ jobs:
       APP_GEO_SECRET: ci-geo-secret
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-          cache: "pip"
+          python-version: "3.14"
 
-      - name: Upgrade pip
-        run: python -m pip install --upgrade pip
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
 
-      - name: Install dependencies
-        run: pip install -r requirements_dev.txt
+      - name: Sync dependencies
+        run: uv sync --frozen --dev
 
       - name: Check formatting
-        run: ruff format --check .
+        run: uv run ruff format --check .
 
       - name: Run lint
-        run: ruff check .
+        run: uv run ruff check .
 
-      - name: Run unit tests
+      - name: Run tests
         run: |
-          pytest -vv \
+          uv run pytest -vv \
             --cov=app \
             --cov-report=term-missing \
             --cov-report=xml

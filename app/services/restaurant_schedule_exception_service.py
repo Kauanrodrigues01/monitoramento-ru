@@ -125,7 +125,7 @@ class RestaurantScheduleExceptionService:
 
         try:
             meal_period = await self.meal_period_service.resolve(restaurant.id, at)
-        except (OutsideMealHoursError, RestaurantClosedAllDayError):
+        except OutsideMealHoursError, RestaurantClosedAllDayError:
             return None
         except MealPeriodClosedError:
             # O MealPeriodService resolveu o período mas encontrou uma exceção CLOSED.

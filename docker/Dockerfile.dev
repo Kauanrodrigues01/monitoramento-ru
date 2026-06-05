@@ -1,15 +1,25 @@
-FROM python:3.12-slim
+FROM python:3.14.5-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PATH="/app/.venv/bin:$PATH"
 
 WORKDIR /app
 
-COPY requirements.txt requirements_dev.txt ./
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-RUN pip install --no-cache-dir -r requirements_dev.txt
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml uv.lock ./
+
+RUN uv sync --frozen --no-dev --no-install-project
 
 COPY . .
+
+RUN uv sync --frozen --no-dev
 
 RUN chmod +x /app/scripts/start.sh
 

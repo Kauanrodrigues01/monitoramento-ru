@@ -9,69 +9,152 @@
   <img src="https://img.shields.io/badge/Alembic-6DB33F?style=for-the-badge&logo=flask&logoColor=white" alt="Alembic"/>
   <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker"/>
   <img src="https://img.shields.io/badge/Pytest-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white" alt="Pytest"/>
-  <img src="https://img.shields.io/badge/Uvicorn-009688?style=for-the-badge&logo=gunicorn&logoColor=white" alt="Uvicorn"/>
+  <img src="https://img.shields.io/badge/Ruff-D7FF64?style=for-the-badge&logo=ruff&logoColor=black" alt="Ruff"/>
+  <img src="https://img.shields.io/badge/Bandit-FCA121?style=for-the-badge&logo=python&logoColor=white" alt="Bandit"/>
+  <img src="https://img.shields.io/badge/uv-DE5FE9?style=for-the-badge&logo=python&logoColor=white" alt="uv"/>
 </p>
 
 ---
 
 ## 📋 Sobre o Projeto
 
-API REST do sistema colaborativo de monitoramento de filas dos Restaurantes Universitários (RU). Usuários enviam relatos da situação da fila pelo front-end; a API valida cada relato por geofence e assinatura HMAC, calcula o status estimado via média ponderada com confidence score, e expõe os snapshots de cada RU para consumo em tempo real.
+API REST do sistema colaborativo de monitoramento de filas dos Restaurantes Universitários (RU).
+
+Os usuários enviam relatos da situação da fila pelo aplicativo. A API valida cada relato por geofence e assinatura HMAC, calcula o status estimado utilizando média ponderada com confidence score e disponibiliza snapshots atualizados para consumo em tempo real.
 
 ---
 
 ## ✨ Funcionalidades
 
-- ✅ Relatos de fila validados por geofence + HMAC-SHA256 (proteção contra replay attacks)
-- ✅ Cálculo de status por média ponderada com janela adaptativa (5/10/15 min)
-- ✅ Confidence score por relato com múltiplas penalidades (mock location, GPS impreciso, coordenadas suspeitas)
-- ✅ Cooldown por dispositivo (device hash) persistido no banco — evita que uma rede compartilhada (Wi-Fi do campus) bloqueie múltiplos usuários ao mesmo tempo
-- ✅ Exceções de horário por restaurante (feriados, horários especiais, fechamentos parciais)
-- ✅ Rate limiting via slowapi + Redis — chave por `X-Device-ID` quando presente, com fallback por IP
-- ✅ Snapshots de status para almoço e jantar calculados por Background Task após cada relato
-- ✅ Endpoint bulk de status para múltiplos RUs em uma única requisição
-- ✅ IP e identificador de dispositivo nunca armazenados — apenas hashes SHA-256 (LGPD)
-- ✅ Documentação automática via Swagger em `/docs`
-- ✅ Debug mode para desenvolvimento sem restrições de horário ou geofence
+* ✅ Relatos validados por geofence + HMAC-SHA256
+* ✅ Proteção contra replay attacks
+* ✅ Média ponderada com janela adaptativa (5, 10 e 15 minutos)
+* ✅ Confidence score baseado em múltiplos fatores
+* ✅ Cooldown por dispositivo persistido no banco
+* ✅ Exceções de horário por restaurante
+* ✅ Rate limiting distribuído via Redis
+* ✅ Snapshots recalculados automaticamente após novos relatos
+* ✅ Endpoint bulk para múltiplos restaurantes
+* ✅ Conformidade LGPD (IP e Device ID armazenados apenas como hash)
+* ✅ Swagger/OpenAPI automático
+* ✅ Debug mode para desenvolvimento
+* ✅ Gerenciamento moderno de dependências com uv
+* ✅ Qualidade automatizada com Ruff, Bandit, Pytest e Pre-Commit
+* ✅ Pipeline CI automatizado via GitHub Actions
+
+---
+
+# 🏗️ Arquitetura
+
+O projeto segue uma arquitetura em camadas, separando responsabilidades para facilitar manutenção, testes e evolução.
+
+```text
+HTTP Request
+      │
+      ▼
+ FastAPI Endpoint
+      │
+      ▼
+ Service Layer
+      │
+      ▼
+ Repository Layer
+      │
+      ▼
+ PostgreSQL
+```
+
+### Camadas
+
+| Camada       | Responsabilidade         |
+| ------------ | ------------------------ |
+| Endpoints    | Receber requisições HTTP |
+| Services     | Regras de negócio        |
+| Repositories | Consultas ao banco       |
+| Models       | Mapeamento ORM           |
+| Schemas      | Validação e serialização |
+| Dependencies | Injeção de dependências  |
 
 ---
 
 ## 🧠 Como funciona o pipeline de relatos
 
-Cada `POST /reports` passa pelas seguintes validações em ordem — a primeira falha interrompe o fluxo:
+Cada `POST /reports` passa pelas seguintes validações:
 
-1. **Restaurante existe e está ativo** → `404` se não encontrado
-2. **Geo-assinatura HMAC-SHA256** → `400` se inválida ou expirada (janela padrão: 60s)
-3. **Cooldown por dispositivo** → `400` se `X-Device-ID` ausente; `429` se o mesmo dispositivo enviou relato nos últimos 2 minutos
-4. **Horário de funcionamento** → `400` se fora do período (exceções têm prioridade sobre schedules regulares)
-5. **Geofence** → `400` se as coordenadas excederem o `geofence_radius_m` do restaurante
+1. Restaurante existe e está ativo
+2. Geo-assinatura HMAC-SHA256 válida
+3. Cooldown por dispositivo
+4. Horário de funcionamento
+5. Geofence
 
-Após aceitar o relato, uma Background Task recalcula o snapshot com média ponderada:
+A primeira validação que falhar interrompe o fluxo.
 
-```
+Após a aceitação do relato, uma Background Task recalcula o snapshot utilizando média ponderada:
+
+```text
 peso_final     = confidence_score × peso_temporal
+
 current_status = Σ(status × peso_final) / Σ(peso_final)
 ```
 
-| Tempo desde o relato | Peso temporal |
-|---|---|
-| ≤ 60s | 0.95 |
-| ≤ 5 min | 0.70 |
-| ≤ 10 min | 0.40 |
-| > 10 min | 0.15 |
+### Peso temporal
+
+| Tempo desde o relato | Peso |
+| -------------------- | ---- |
+| ≤ 60s                | 0.95 |
+| ≤ 5 min              | 0.70 |
+| ≤ 10 min             | 0.40 |
+| > 10 min             | 0.15 |
 
 ---
 
-## 🚀 Executando o Projeto
+# 🚀 Executando o Projeto
 
-### 🔧 Pré-requisitos
+## 🔧 Pré-requisitos
 
-- Docker + Docker Compose
-- Python 3.12+ (somente para o modo 1)
+### Desenvolvimento Local
 
-### Configuração do `.env`
+* Python 3.14+
+* uv
+* Docker
+* Docker Compose
 
-Crie um arquivo `.env` na raiz do projeto:
+### Produção
+
+* Docker
+* Docker Compose
+
+---
+
+# 📦 Instalando o uv
+
+Linux / macOS:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Verifique:
+
+```bash
+uv --version
+```
+
+---
+
+# 📥 Clonando o Projeto
+
+```bash
+git clone https://github.com/seu-usuario/monitoramento-ru.git
+
+cd back-end-fast-api
+```
+
+---
+
+# ⚙️ Configuração do Ambiente
+
+Crie o arquivo `.env`:
 
 ```env
 DB_HOST=localhost
@@ -81,22 +164,16 @@ DB_PASSWORD=postgres
 DB_NAME=mydb
 TEST_DB_NAME=test_db
 
-# Chave para autenticação dos endpoints admin (header X-Admin-Key)
 ADMIN_API_KEY=sua-chave-aqui
 
-# Segredo para geração/validação da geo-assinatura HMAC dos relatos
 APP_GEO_SECRET=seu-segredo-aqui
 
-# Janela de validade da geo-assinatura em segundos (padrão: 60)
 GEO_SIGNATURE_MAX_SKEW_SECONDS=60
 
-# Redis para rate limiting com múltiplos workers
 REDIS_URL=redis://localhost:6379
 
-# Origens CORS permitidas (JSON array). Use ["*"] apenas em desenvolvimento.
 CORS_ALLOWED_ORIGINS=["http://localhost:5173"]
 
-# Ativa modo debug — NUNCA use true em produção
 DEBUG=False
 
 LOG_LEVEL=INFO
@@ -105,163 +182,377 @@ LOG_ENV=development
 
 ---
 
-### Modo 1 — Desenvolvimento local (banco e Redis no Docker, API no host)
+# 📦 Instalando Dependências
 
-Ideal para desenvolvimento com hot-reload nativo e acesso direto ao debugger.
+O projeto utiliza uv como gerenciador oficial de dependências.
 
 ```bash
-# 1. Subir apenas banco e Redis
-docker compose -f docker/docker-compose.dev.yml up db redis -d
-
-# 2. Instalar dependências
-pip install -r requirements.txt -r requirements_dev.txt
-
-# 3. Aplicar migrações
-alembic upgrade head
-
-# 4. Iniciar servidor com hot-reload
-uvicorn app.main:app --reload --port 8000
+uv sync --dev
 ```
 
 ---
 
-### Modo 2 — Desenvolvimento com Docker (todos os containers)
+# 🪝 Instalando os Hooks do Git
 
-Sobe a API junto com banco e Redis em containers. Não requer Python instalado localmente.
+Após clonar o projeto, execute:
 
 ```bash
-# Subir todos os serviços
-docker compose -f docker/docker-compose.dev.yml up --build
+uv run pre-commit install
+```
 
-# Aplicar migrações (primeira vez ou após novas migrations)
+Isso instala os hooks locais do Git responsáveis por validar automaticamente o código antes de cada commit.
+
+---
+
+# 🐳 Modo 1 — Desenvolvimento Local
+
+Banco e Redis em containers.
+
+API executando diretamente na máquina.
+
+Subir banco e Redis:
+
+```bash
+docker compose -f docker/docker-compose.dev.yml up db redis -d
+```
+
+Aplicar migrations:
+
+```bash
+uv run alembic upgrade head
+```
+
+Executar a API:
+
+```bash
+uv run uvicorn app.main:app --reload --port 8000
+```
+
+---
+
+# 🐳 Modo 2 — Desenvolvimento com Docker
+
+Todos os serviços executando em containers.
+
+```bash
+docker compose -f docker/docker-compose.dev.yml up --build
+```
+
+Aplicar migrations:
+
+```bash
 docker compose -f docker/docker-compose.dev.yml exec api alembic upgrade head
 ```
 
 ---
 
-### Modo 3 — Produção
+# 🐳 Modo 3 — Produção
 
 ```bash
 cd docker
 
-# Build da imagem de produção
 docker compose build
 
-# Subir todos os serviços
 docker compose up -d
+```
 
-# Aplicar migrações
+Aplicar migrations:
+
+```bash
 docker compose exec api alembic upgrade head
 ```
 
 ---
 
-### 🌐 Acesse
+# 🌐 Acesse
 
-- Swagger: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
+Swagger:
+
+```text
+http://localhost:8000/docs
+```
+
+ReDoc:
+
+```text
+http://localhost:8000/redoc
+```
 
 ---
 
-## 🧪 Testes
+# 🧪 Testes
+
+Executar todos os testes:
 
 ```bash
-# Todos os testes
+uv run pytest
+```
+
+Executar com cobertura:
+
+```bash
+uv run pytest \
+  --cov=app \
+  --cov-report=term-missing \
+  --cov-report=html
+```
+
+---
+
+# 🛠️ Ferramentas Utilizadas
+
+| Ferramenta     | Finalidade                             |
+| -------------- | -------------------------------------- |
+| uv             | Gerenciamento de dependências          |
+| Ruff           | Lint e formatação                      |
+| Pytest         | Testes automatizados                   |
+| Bandit         | Análise estática de segurança          |
+| Pre-Commit     | Validações automáticas antes do commit |
+| Docker         | Containers                             |
+| GitHub Actions | Integração contínua                    |
+
+---
+
+# 🔍 Qualidade de Código
+
+### Ruff
+
+Formatar:
+
+```bash
+uv run ruff format .
+```
+
+Lint:
+
+```bash
+uv run ruff check .
+```
+
+Corrigir automaticamente:
+
+```bash
+uv run ruff check . --fix
+```
+
+### Bandit
+
+Análise de segurança:
+
+```bash
+uv run bandit -r app
+```
+
+---
+
+# 🪝 Pre-Commit
+
+Executar manualmente:
+
+```bash
+uv run pre-commit run --all-files
+```
+
+Os seguintes hooks são executados automaticamente antes de cada commit:
+
+* Ruff Format
+* Ruff Check
+* Bandit
+* Pytest
+
+Fluxo:
+
+```text
+git commit
+    ↓
+ruff format
+    ↓
+ruff check
+    ↓
+bandit
+    ↓
 pytest
+    ↓
+commit aprovado
+```
 
-# Com relatório de cobertura
-pytest --cov=app --cov-report=html
+Se qualquer etapa falhar, o commit é bloqueado.
+
+---
+
+# ⚙️ Integração Contínua (CI)
+
+O GitHub Actions executa automaticamente:
+
+* Ruff Format Check
+* Ruff Check
+* Pytest
+* Coverage
+
+Em:
+
+* Push para `main`
+* Push para `develop`
+* Pull Requests para `main`
+* Pull Requests para `develop`
+
+---
+
+# 🔐 Segurança
+
+Principais mecanismos implementados:
+
+* HMAC-SHA256 para validação dos relatos
+* Proteção contra replay attacks
+* Geofence para validação de localização
+* Rate limiting distribuído via Redis
+* Hash SHA-256 para anonimização de IP e Device ID
+* Bandit para análise estática de segurança
+* Validações automáticas via CI e Pre-Commit
+* Containers executados com usuário não privilegiado
+
+---
+
+# 📦 Endpoints
+
+## Restaurantes
+
+| Método | Path                       | Auth      | Descrição                 |
+| ------ | -------------------------- | --------- | ------------------------- |
+| GET    | `/api/v1/restaurants`      | —         | Lista restaurantes ativos |
+| POST   | `/api/v1/restaurants`      | Admin Key | Cria restaurante          |
+| GET    | `/api/v1/restaurants/{id}` | —         | Detalhe do restaurante    |
+| PATCH  | `/api/v1/restaurants/{id}` | Admin Key | Atualiza restaurante      |
+
+---
+
+## Horários e Exceções
+
+| Método | Path                                                   | Auth      | Descrição        |
+| ------ | ------------------------------------------------------ | --------- | ---------------- |
+| GET    | `/api/v1/restaurants/{id}/schedules`                   | —         | Lista horários   |
+| POST   | `/api/v1/restaurants/{id}/schedules`                   | Admin Key | Cria horário     |
+| PATCH  | `/api/v1/restaurants/{id}/schedules/{sid}`             | Admin Key | Atualiza horário |
+| GET    | `/api/v1/restaurants/{id}/schedule-exceptions`         | —         | Lista exceções   |
+| GET    | `/api/v1/restaurants/{id}/schedule-exceptions/current` | —         | Exceção atual    |
+| POST   | `/api/v1/restaurants/{id}/schedule-exceptions`         | Admin Key | Cria exceção     |
+| PATCH  | `/api/v1/restaurants/{id}/schedule-exceptions/{eid}`   | Admin Key | Atualiza exceção |
+
+---
+
+## Fila
+
+| Método | Path                                      | Auth        | Descrição            |
+| ------ | ----------------------------------------- | ----------- | -------------------- |
+| POST   | `/api/v1/restaurants/{id}/reports`        | X-Device-ID | Envia relato         |
+| GET    | `/api/v1/restaurants/{id}/reports/recent` | —           | Relatos recentes     |
+| GET    | `/api/v1/restaurants/{id}/status`         | —           | Status atual         |
+| GET    | `/api/v1/restaurants/status/bulk`         | —           | Status múltiplos RUs |
+
+Autenticação administrativa:
+
+```text
+X-Admin-Key: <ADMIN_API_KEY>
 ```
 
 ---
 
-## 📦 Endpoints
+# 🔒 Rate Limits
 
-### Restaurantes
+Ordem da chave:
 
-| Método | Path | Auth | Descrição |
-|---|---|---|---|
-| `GET` | `/api/v1/restaurants` | — | Lista restaurantes ativos |
-| `POST` | `/api/v1/restaurants` | Admin Key | Cria restaurante |
-| `GET` | `/api/v1/restaurants/{id}` | — | Detalhe do restaurante |
-| `PATCH` | `/api/v1/restaurants/{id}` | Admin Key | Atualiza restaurante |
-
-### Horários e Exceções
-
-| Método | Path | Auth | Descrição |
-|---|---|---|---|
-| `GET` | `/api/v1/restaurants/{id}/schedules` | — | Lista horários de funcionamento |
-| `POST` | `/api/v1/restaurants/{id}/schedules` | Admin Key | Cria horário |
-| `PATCH` | `/api/v1/restaurants/{id}/schedules/{sid}` | Admin Key | Atualiza horário |
-| `GET` | `/api/v1/restaurants/{id}/schedule-exceptions` | — | Lista exceções de horário |
-| `GET` | `/api/v1/restaurants/{id}/schedule-exceptions/current` | — | Exceção em vigor agora |
-| `POST` | `/api/v1/restaurants/{id}/schedule-exceptions` | Admin Key | Cria exceção |
-| `PATCH` | `/api/v1/restaurants/{id}/schedule-exceptions/{eid}` | Admin Key | Atualiza exceção |
-
-### Fila
-
-| Método | Path | Auth | Descrição |
-|---|---|---|---|
-| `POST` | `/api/v1/restaurants/{id}/reports` | `X-Device-ID` (header) | Envia relato de fila |
-| `GET` | `/api/v1/restaurants/{id}/reports/recent` | — | Últimos relatos do período vigente |
-| `GET` | `/api/v1/restaurants/{id}/status` | — | Status atual estimado (snapshot) |
-| `GET` | `/api/v1/restaurants/status/bulk` | — | Status de múltiplos RUs |
-
-Autenticação admin via header `X-Admin-Key: <ADMIN_API_KEY>`.
-
----
-
-## 🔒 Rate Limits
-
-A chave do rate limit é determinada na seguinte ordem: **`X-Device-ID`** (header) → **IP** → `"anonymous"`. Endpoints que não recebem `X-Device-ID` usam IP como chave; `POST /reports` usa device, pois o header é obrigatório nesse endpoint.
-
-| Operação | Limite | Chave |
-|---|---|---|
-| `POST /reports` | 20 req/min | `X-Device-ID` |
-| `GET /status` | 60 req/min | IP |
-| `GET /status/bulk` | 20 req/min | IP |
-| Leitura geral | 60 req/min | IP |
-| Escrita admin | 5–20 req/min | IP |
-
----
-
-## 🐛 Debug Mode
-
-Ativado com `DEBUG=True` no `.env`. **Nunca usar em produção.**
-
-| O que muda | Detalhe |
-|---|---|
-| `GET /api/v1/debug/geo-signature` exposto | Gera assinaturas válidas para testes no Swagger |
-| Janela da geo-assinatura | Ampliada de 60s para 24h |
-| `MealPeriodService` | Substituído por `DebugMealPeriodService`: 05h–16h59 = LUNCH, 17h–04h59 = DINNER, sem consultar o banco |
-| Geofence | Distância calculada e logada, mas nunca bloqueia o relato |
-
----
-
-## 📁 Estrutura do Projeto
-
+```text
+X-Device-ID → IP → anonymous
 ```
+
+| Operação      | Limite       |
+| ------------- | ------------ |
+| POST reports  | 20 req/min   |
+| GET status    | 60 req/min   |
+| GET bulk      | 20 req/min   |
+| Leitura geral | 60 req/min   |
+| Escrita admin | 5–20 req/min |
+
+---
+
+# 🐛 Debug Mode
+
+Ativado com:
+
+```env
+DEBUG=True
+```
+
+Nunca utilize em produção.
+
+### Alterações
+
+* Endpoint de geração de geo-signature habilitado
+* Janela da assinatura ampliada para 24 horas
+* Geofence nunca bloqueia relatos
+* MealPeriodService substituído por implementação de debug
+
+---
+
+# 📁 Estrutura do Projeto
+
+```text
 app/
-├── api/v1/
-│   ├── endpoints/       # Routers por domínio
-│   └── router.py
-├── core/                # Settings, logging, rate limiter, exception handlers
-├── dependencies/        # Injeção de dependências (services, auth)
-├── exceptions/          # Exceções de domínio com status HTTP mapeado
-├── models/              # SQLAlchemy models (ORM)
-├── repositories/        # Queries ao banco
-├── schemas/             # Pydantic schemas (request/response)
-└── services/            # Regras de negócio
-docker/                  # Dockerfile e docker-compose (dev e produção)
-docs/                    # Documentação técnica detalhada
-scripts/                 # Scripts de inicialização
+├── api/              # Endpoints FastAPI
+├── core/             # Configurações da aplicação
+├── dependencies/     # Injeção de dependências
+├── exceptions/       # Exceções customizadas
+├── models/           # Models SQLAlchemy
+├── repositories/     # Acesso ao banco
+├── schemas/          # Schemas Pydantic
+├── services/         # Regras de negócio
+
+docker/               # Docker e Compose
+docs/                 # Documentação técnica
+scripts/              # Scripts de inicialização
+
+pyproject.toml
+uv.lock
+.pre-commit-config.yaml
+README.md
 ```
 
 ---
 
-## 👨‍💻 Autor
+# 🤝 Contribuindo
+
+Após clonar o projeto:
+
+```bash
+git clone <repo>
+
+cd back-end-fast-api
+
+uv sync --dev
+
+uv run pre-commit install
+```
+
+Antes de abrir um Pull Request:
+
+```bash
+uv run pre-commit run --all-files
+```
+
+Executar os testes:
+
+```bash
+uv run pytest
+```
+
+---
+
+# 👨‍💻 Autor
 
 **Kauan Rodrigues Lima**
 
-- GitHub: [Kauanrodrigues01](https://github.com/Kauanrodrigues01)
-- LinkedIn: [Kauan Rodrigues](https://www.linkedin.com/in/kauan-rodrigues-lima/)
+GitHub:
+https://github.com/Kauanrodrigues01
+
+LinkedIn:
+https://www.linkedin.com/in/kauan-rodrigues-lima/

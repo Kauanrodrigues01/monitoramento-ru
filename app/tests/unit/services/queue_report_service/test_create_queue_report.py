@@ -634,7 +634,7 @@ class TestCreateQueueReport_MealPeriod:
         mock_repo.get_last_by_device_hash_within_minutes.return_value = None
         mock_meal_period_service.resolve.side_effect = RestaurantClosedAllDayError()
 
-        with patch(_PATCH_GEO_SIG):
+        with patch(_PATCH_GEO_SIG), patch(_PATCH_HAVERSINE, return_value=50.0):
             with pytest.raises(RestaurantClosedAllDayError):
                 await service.create_queue_report(
                     restaurant.public_id,
@@ -658,7 +658,7 @@ class TestCreateQueueReport_MealPeriod:
         mock_repo.get_last_by_device_hash_within_minutes.return_value = None
         mock_meal_period_service.resolve.side_effect = OutsideMealHoursError()
 
-        with patch(_PATCH_GEO_SIG):
+        with patch(_PATCH_GEO_SIG), patch(_PATCH_HAVERSINE, return_value=50.0):
             with pytest.raises(OutsideMealHoursError):
                 await service.create_queue_report(
                     restaurant.public_id,
@@ -682,7 +682,7 @@ class TestCreateQueueReport_MealPeriod:
         mock_repo.get_last_by_device_hash_within_minutes.return_value = None
         mock_meal_period_service.resolve.side_effect = MealPeriodClosedError()
 
-        with patch(_PATCH_GEO_SIG):
+        with patch(_PATCH_GEO_SIG), patch(_PATCH_HAVERSINE, return_value=50.0):
             with pytest.raises(MealPeriodClosedError):
                 await service.create_queue_report(
                     restaurant.public_id,

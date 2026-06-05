@@ -13,13 +13,12 @@ from app.exceptions.queue_report_exceptions import (
     QueueReportLocationOutOfGeofenceError,
     QueueReportTooRecentError,
 )
-from app.exceptions.restaurant_exceptions import RestaurantNotFoundError
 from app.models.queue_reports import QueueReport
-from app.models.restaurant import Restaurant
 from app.repositories.queue_report_repository import QueueReportRepository
 from app.repositories.queue_snapshot_repository import QueueSnapshotRepository
 from app.repositories.restaurant_repository import RestaurantRepository
 from app.schemas.queue_report_schemas import QueueReportCreate, truncate_coordinate
+from app.services._mixins import RestaurantResolverMixin
 from app.services.confidence_score_service import ConfidenceScoreService
 from app.services.geo_signature_service import GeoSignatureService
 from app.services.ip_service import IpService
@@ -32,7 +31,7 @@ logger = get_logger(__name__)
 _SCHEMA_ONLY_FIELDS = {"geo_signature", "geo_timestamp"}
 
 
-class QueueReportService:
+class QueueReportService(RestaurantResolverMixin):
     def __init__(
         self,
         repo: QueueReportRepository,
@@ -46,16 +45,6 @@ class QueueReportService:
         self.snapshot_repo = snapshot_repo
         self.meal_period_service = meal_period_service
         self.snapshot_status_service = snapshot_status_service
-
-    async def _get_restaurant_by_public_id_or_error(
-        self, public_id: UUID
-    ) -> Restaurant:
-        restaurant = await self.restaurant_repo.get_by_public_id(public_id)
-
-        if not restaurant:
-            raise RestaurantNotFoundError()
-
-        return restaurant
 
     async def create_queue_report(
         self,

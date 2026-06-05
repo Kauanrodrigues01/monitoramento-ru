@@ -1,6 +1,6 @@
-from app.core.datetime_utils import to_app_tz, utc_now
 from uuid import UUID
 
+from app.core.datetime_utils import to_app_tz, utc_now
 from app.core.logging import get_logger
 from app.exceptions.meal_period_exceptions import (
     MealPeriodClosedError,
@@ -11,7 +11,6 @@ from app.exceptions.queue_snapshot_exceptions import (
     QueueSnapshotBulkLimitExceededError,
     QueueSnapshotNotFoundError,
 )
-from app.exceptions.restaurant_exceptions import RestaurantNotFoundError
 from app.models.restaurant import MealPeriodEnum, Restaurant
 from app.repositories.queue_snapshot_repository import QueueSnapshotRepository
 from app.repositories.restaurant_repository import RestaurantRepository
@@ -19,6 +18,7 @@ from app.schemas.queue_snapshot_schemas import (
     QueueSnapshotBulkItem,
     QueueSnapshotResponse,
 )
+from app.services._mixins import RestaurantResolverMixin
 from app.services.meal_period_service import MealPeriodService
 
 logger = get_logger(__name__)
@@ -26,7 +26,7 @@ logger = get_logger(__name__)
 BULK_LIMIT = 10
 
 
-class QueueSnapshotService:
+class QueueSnapshotService(RestaurantResolverMixin):
     def __init__(
         self,
         repo: QueueSnapshotRepository,
@@ -36,17 +36,6 @@ class QueueSnapshotService:
         self.repo = repo
         self.restaurant_repo = restaurant_repo
         self.meal_period_service = meal_period_service
-
-    async def _get_restaurant_by_public_id_or_error(
-        self, public_id: UUID
-    ) -> Restaurant:
-        restaurant = await self.restaurant_repo.get_by_public_id(public_id)
-
-        if not restaurant:
-            logger.warning("Restaurante não encontrado: %s", public_id)
-            raise RestaurantNotFoundError()
-
-        return restaurant
 
     async def get_status(self, restaurant_public_id: UUID) -> QueueSnapshotResponse:
         restaurant = await self._get_restaurant_by_public_id_or_error(

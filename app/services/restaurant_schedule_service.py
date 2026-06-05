@@ -4,23 +4,23 @@ from sqlalchemy.exc import IntegrityError
 
 from app.core.logging import get_logger
 from app.exceptions.restaurant_exceptions import (
-    RestaurantNotFoundError,
     RestaurantScheduleAlreadyExistsError,
     RestaurantScheduleNotFoundError,
     RestaurantScheduleOpensBeforeClosesError,
 )
-from app.models.restaurant import MealPeriodEnum, Restaurant, RestaurantSchedule
+from app.models.restaurant import MealPeriodEnum, RestaurantSchedule
 from app.repositories.restaurant_repository import RestaurantRepository
 from app.repositories.restaurant_schedule_repository import RestaurantScheduleRepository
 from app.schemas.restaurant_schedule_schemas import (
     RestaurantScheduleCreate,
     RestaurantScheduleUpdate,
 )
+from app.services._mixins import RestaurantResolverMixin
 
 logger = get_logger(__name__)
 
 
-class RestaurantScheduleService:
+class RestaurantScheduleService(RestaurantResolverMixin):
     def __init__(
         self,
         repo: RestaurantScheduleRepository,
@@ -28,16 +28,6 @@ class RestaurantScheduleService:
     ):
         self.repo = repo
         self.restaurant_repo = restaurant_repo
-
-    async def _get_restaurant_by_public_id_or_error(
-        self, public_id: UUID
-    ) -> Restaurant:
-        restaurant = await self.restaurant_repo.get_by_public_id(public_id)
-
-        if not restaurant:
-            raise RestaurantNotFoundError()
-
-        return restaurant
 
     async def create_restaurant_schedule(
         self, public_id: UUID, restaurant_schedule_data: RestaurantScheduleCreate

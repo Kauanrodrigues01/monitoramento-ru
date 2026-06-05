@@ -109,7 +109,7 @@
 
 ## 🔲 Pendente — ordenado por prioridade
 
-### 1. Métricas por restaurante (`GET /v1/restaurants/{public_id}/metrics`)
+<!-- ### 1. Métricas por restaurante (`GET /v1/restaurants/{public_id}/metrics`)
 
 Dados de atividade do dia corrente para a página de detalhe do restaurante.
 
@@ -133,13 +133,13 @@ Dados de atividade do dia corrente para a página de detalhe do restaurante.
 - [ ] `QueueReportRepository.list_today_by_ru` — `created_at BETWEEN day_start AND day_end` no timezone `APP_TIMEZONE`
 - [ ] `MetricsService.get_restaurant_metrics(ru_id, day)` — agrupa por hora em Python
 - [ ] Endpoint público, 30 req/min
-- [ ] Testes: relatos do dia no timezone correto, `avg_confidence_today = null` sem relatos, `dominant_status` por hora, `404` para restaurante inexistente
+- [ ] Testes: relatos do dia no timezone correto, `avg_confidence_today = null` sem relatos, `dominant_status` por hora, `404` para restaurante inexistente -->
 
-### 2. Refactoring
-- [ ] Extrair `_get_restaurant_by_public_id_or_error` — duplicado em `QueueReportService`, `RestaurantScheduleService`, `RestaurantScheduleExceptionService` e `QueueSnapshotService`. Candidato a `RestaurantResolverMixin` ou `app/services/_utils.py`. Teste em `test_get_restaurant_or_error.py` já cobre o comportamento.
-- [ ] Atualizar testes das classes afetadas
+### 1. Refactoring
+- [x] Extrair `_get_restaurant_by_public_id_or_error` — duplicado em `QueueReportService`, `RestaurantScheduleService`, `RestaurantScheduleExceptionService` e `QueueSnapshotService`. Candidato a `RestaurantResolverMixin` ou `app/services/_utils.py`. Teste em `test_get_restaurant_or_error.py` já cobre o comportamento.
+- [x] Atualizar testes das classes afetadas
 
-### 3. Testes com banco real
+### 2. Testes com banco real
 
 > Requerem PostgreSQL real (adicionar ao CI antes de habilitar).
 

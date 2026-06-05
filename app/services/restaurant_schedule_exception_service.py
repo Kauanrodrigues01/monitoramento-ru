@@ -10,14 +10,12 @@ from app.exceptions.meal_period_exceptions import (
     RestaurantClosedAllDayError,
 )
 from app.exceptions.restaurant_exceptions import (
-    RestaurantNotFoundError,
     RestaurantScheduleExceptionAlreadyExistsError,
     RestaurantScheduleExceptionInvalidStateError,
     RestaurantScheduleExceptionNotFoundError,
 )
 from app.models.restaurant import (
     ExceptionTypeEnum,
-    Restaurant,
     RestaurantScheduleException,
 )
 from app.repositories.restaurant_repository import RestaurantRepository
@@ -28,12 +26,13 @@ from app.schemas.restaurant_schedule_exception_schemas import (
     RestaurantScheduleExceptionCreate,
     RestaurantScheduleExceptionUpdate,
 )
+from app.services._mixins import RestaurantResolverMixin
 from app.services.meal_period_service import MealPeriodService
 
 logger = get_logger(__name__)
 
 
-class RestaurantScheduleExceptionService:
+class RestaurantScheduleExceptionService(RestaurantResolverMixin):
     def __init__(
         self,
         repo: RestaurantScheduleExceptionRepository,
@@ -43,14 +42,6 @@ class RestaurantScheduleExceptionService:
         self.repo = repo
         self.restaurant_repo = restaurant_repo
         self.meal_period_service = meal_period_service
-
-    async def _get_restaurant_by_public_id_or_error(
-        self, public_id: UUID
-    ) -> Restaurant:
-        restaurant = await self.restaurant_repo.get_by_public_id(public_id)
-        if not restaurant:
-            raise RestaurantNotFoundError()
-        return restaurant
 
     async def create_restaurant_schedule_exception(
         self,

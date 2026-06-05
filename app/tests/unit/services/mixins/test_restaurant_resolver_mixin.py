@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 import pytest
+
 from app.exceptions.restaurant_exceptions import RestaurantNotFoundError
 
 

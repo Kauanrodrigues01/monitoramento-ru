@@ -18,3 +18,6 @@ UPDATE_SCHEDULE_EXCEPTION_RATE_LIMIT = "10/minute"
 
 # Rate limit para criação de Queue Report — proteção contra DoS bruto; cooldown real é feito no service
 QUEUE_REPORT_RATE_LIMIT = "20/minute"
+
+# Rate limit para conexões WebSocket — previne brute force de abertura de conexões
+WS_CONNECT_RATE_LIMIT = "20/minute"

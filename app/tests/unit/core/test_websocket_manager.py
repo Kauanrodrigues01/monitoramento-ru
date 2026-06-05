@@ -77,6 +77,87 @@ class TestDisconnect:
         assert ws2 in manager.rooms["snapshots"]
 
 
+class TestDeviceIdEnforcement:
+    async def test_second_connection_same_device_closes_old(self):
+        manager = WebSocketManager()
+        ws1, ws2 = _make_ws(), _make_ws()
+
+        await manager.connect(ws1, "snapshots", device_id="dev-abc")
+        await manager.connect(ws2, "snapshots", device_id="dev-abc")
+
+        ws1.close.assert_called_once_with(code=1000)
+
+    async def test_second_connection_same_device_removes_old_from_room(self):
+        manager = WebSocketManager()
+        ws1, ws2 = _make_ws(), _make_ws()
+
+        await manager.connect(ws1, "snapshots", device_id="dev-abc")
+        await manager.connect(ws2, "snapshots", device_id="dev-abc")
+
+        assert ws1 not in manager.rooms["snapshots"]
+        assert ws2 in manager.rooms["snapshots"]
+
+    async def test_second_connection_same_device_registers_new_as_active(self):
+        manager = WebSocketManager()
+        ws1, ws2 = _make_ws(), _make_ws()
+
+        await manager.connect(ws1, "snapshots", device_id="dev-abc")
+        await manager.connect(ws2, "snapshots", device_id="dev-abc")
+
+        assert manager._device_connections["dev-abc"] is ws2
+
+    async def test_different_devices_coexist_in_same_room(self):
+        manager = WebSocketManager()
+        ws1, ws2 = _make_ws(), _make_ws()
+
+        await manager.connect(ws1, "snapshots", device_id="dev-1")
+        await manager.connect(ws2, "snapshots", device_id="dev-2")
+
+        assert ws1 in manager.rooms["snapshots"]
+        assert ws2 in manager.rooms["snapshots"]
+        ws1.close.assert_not_called()
+        ws2.close.assert_not_called()
+
+    async def test_disconnect_removes_device_from_tracking(self):
+        manager = WebSocketManager()
+        ws = _make_ws()
+
+        await manager.connect(ws, "snapshots", device_id="dev-abc")
+        manager.disconnect(ws, "snapshots", device_id="dev-abc")
+
+        assert "dev-abc" not in manager._device_connections
+
+    async def test_disconnect_does_not_remove_device_if_replaced(self):
+        """Desconexão da ws antiga não deve remover a ws nova do tracking."""
+        manager = WebSocketManager()
+        ws1, ws2 = _make_ws(), _make_ws()
+
+        await manager.connect(ws1, "snapshots", device_id="dev-abc")
+        await manager.connect(ws2, "snapshots", device_id="dev-abc")
+        # Desconecta ws1 (antiga, já substituída)
+        manager.disconnect(ws1, "snapshots")
+
+        assert manager._device_connections.get("dev-abc") is ws2
+
+    async def test_dead_connection_clears_device_tracking_on_broadcast(self):
+        manager = WebSocketManager()
+        ws = _make_ws()
+        ws.send_text.side_effect = Exception("conexão perdida")
+
+        await manager.connect(ws, "snapshots", device_id="dev-abc")
+        await manager.broadcast("snapshots", "payload")
+
+        assert "dev-abc" not in manager._device_connections
+
+    async def test_connect_without_device_id_does_not_track(self):
+        manager = WebSocketManager()
+        ws = _make_ws()
+
+        await manager.connect(ws, "snapshots")
+
+        assert len(manager._device_connections) == 0
+
+
 class TestBroadcast:
     async def test_sends_payload_to_all_clients_in_room(self):
         manager = WebSocketManager()

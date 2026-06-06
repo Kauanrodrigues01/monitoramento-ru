@@ -139,16 +139,19 @@ Dados de atividade do dia corrente para a página de detalhe do restaurante.
 - [x] Extrair `_get_restaurant_by_public_id_or_error` — duplicado em `QueueReportService`, `RestaurantScheduleService`, `RestaurantScheduleExceptionService` e `QueueSnapshotService`. Candidato a `RestaurantResolverMixin` ou `app/services/_utils.py`. Teste em `test_get_restaurant_or_error.py` já cobre o comportamento.
 - [x] Atualizar testes das classes afetadas
 
+```markdown
 ### 2. Testes com banco real
 
 > Requerem PostgreSQL real (adicionar ao CI antes de habilitar).
 
 #### Models — constraints e invariantes
-- [ ] `QueueSnapshot.ck_avg_status_value_range` — rejeita valores fora de `[0.00, 3.00]`; aceita `NULL`
-- [ ] `QueueSnapshot.ck_reports_last_15m_positive` — rejeita valores negativos
-- [ ] `QueueSnapshot.ck_confidence_score` — rejeita valores fora do intervalo definido
-- [ ] `QueueReport` — `device_hash` e `ip_hash` como SHA-256 hexdigest de 64 chars
-- [ ] Cascade `ondelete` — deletar `Restaurant` remove `QueueSnapshot` e `QueueReport`
+- [x] `QueueSnapshot` — exemplo: ck_avg_status_value_range` — rejeita valores fora de `[0.00, 3.00]`; aceita `NULL`
+- [x] `QueueReport` — exemplo: `ck_confidence_score_range` — rejeita valores fora de `[0.05, 1.00]`
+- [x] `Restaurant` — `public_id` é UUID único; `active` é `True` por padrão
+- [x] `RestaurantSchedule` — `opens_at < closes_at`; `meal_period` é enum
+- [x] `RestaurantScheduleException` — `date` é data; `opens_at < closes_at` para `CUSTOM_HOURS`; `meal_period` é enum ou `None` 
+- [x] Cascade `ondelete` — deletar `Restaurant` remove `QueueSnapshot` e `QueueReport`
+```
 
 #### Repositories — queries
 - [ ] `QueueReportRepository.get_last_by_device_hash_within_minutes` — janela de tempo correta; ignora relatos fora da janela

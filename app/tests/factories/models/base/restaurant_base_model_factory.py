@@ -18,7 +18,7 @@ class BaseRestaurantFactory(factory.Factory):
         model = Restaurant
 
     name = factory.Sequence(lambda n: f"RU Campus {n}")
-    campus = CampusEnum.PALMARES
+    campus = factory.Iterator(CampusEnum)
 
     lat = Decimal("-4.215432")
     lng = Decimal("-38.727981")

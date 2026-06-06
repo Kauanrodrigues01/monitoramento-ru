@@ -25,7 +25,8 @@ repos:
 
       - id: pytest
         name: pytest
-        entry: uv run pytest
+        # Apenas testes unitários, para evitar que falhas em testes de integração (que dependem de serviços externos) bloqueiem o commit. Testes de integração podem ser executados manualmente ou em pipelines CI.
+        entry: uv run pytest app/tests/unit --disable-warnings -q
         language: system
         pass_filenames: false
         always_run: true

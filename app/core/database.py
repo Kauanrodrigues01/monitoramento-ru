@@ -11,15 +11,6 @@ DATABASE_URL = (
     f"{settings.DB_NAME}"
 )
 
-TEST_DATABASE_URL = (
-    f"postgresql+asyncpg://"
-    f"{settings.DB_USER}:"
-    f"{settings.DB_PASSWORD}@"
-    f"{settings.DB_HOST}:"
-    f"{settings.DB_PORT}/"
-    f"{settings.TEST_DB_NAME}"
-)
-
 engine = create_async_engine(
     DATABASE_URL,
     echo=False,  # Desativa o log de SQL para evitar poluição do console

@@ -6,10 +6,19 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from app.core.database import TEST_DATABASE_URL
+from app.core.settings import settings
 from app.dependencies.database import get_db_session
 from app.main import app
 from app.models.base import Base
+
+TEST_DATABASE_URL = (
+    f"postgresql+asyncpg://"
+    f"{settings.DB_USER}:"
+    f"{settings.DB_PASSWORD}@"
+    f"{settings.DB_HOST}:"
+    f"{settings.DB_PORT}/"
+    f"{settings.TEST_DB_NAME}"
+)
 
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")

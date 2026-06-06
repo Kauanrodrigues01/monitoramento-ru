@@ -8,7 +8,7 @@ from app.exceptions.meal_period_exceptions import (
     OutsideMealHoursError,
     RestaurantClosedAllDayError,
 )
-from app.models.queue_snapshot import QueueSnapshot, SnapshotStatusEnum
+from app.models.queue_snapshot import SnapshotStatusEnum
 from app.models.restaurant import MealPeriodEnum
 from app.repositories.queue_report_repository import QueueReportRepository
 from app.repositories.queue_snapshot_repository import QueueSnapshotRepository
@@ -16,21 +16,10 @@ from app.repositories.restaurant_repository import RestaurantRepository
 from app.schemas.metrics_schemas import MetricsSummaryResponse
 from app.services.meal_period_service import MealPeriodService
 from app.services.metrics_service import MetricsService
-from app.tests.factories.restaurant_model_factory import RestaurantFactory
-
-
-def _make_snapshot(
-    ru_id: int = 1,
-    meal_period: MealPeriodEnum = MealPeriodEnum.LUNCH,
-    current_status: SnapshotStatusEnum = SnapshotStatusEnum.NO_DATA,
-    confidence_score: Decimal = Decimal("1.00"),
-) -> QueueSnapshot:
-    snapshot = QueueSnapshot()
-    snapshot.ru_id = ru_id
-    snapshot.meal_period = meal_period
-    snapshot.current_status = current_status
-    snapshot.confidence_score = confidence_score
-    return snapshot
+from app.tests.factories.models.unit.queue_snapshot_model_factory import (
+    QueueSnapshotFactory,
+)
+from app.tests.factories.models.unit.restaurant_model_factory import RestaurantFactory
 
 
 @pytest.fixture
@@ -264,10 +253,10 @@ class TestGetSummary:
         mock_meal_period_service,
     ):
         snapshots = [
-            _make_snapshot(current_status=SnapshotStatusEnum.SMALL),
-            _make_snapshot(current_status=SnapshotStatusEnum.SMALL),
-            _make_snapshot(current_status=SnapshotStatusEnum.LARGE),
-            _make_snapshot(current_status=SnapshotStatusEnum.NO_DATA),
+            QueueSnapshotFactory.build(current_status=SnapshotStatusEnum.SMALL),
+            QueueSnapshotFactory.build(current_status=SnapshotStatusEnum.SMALL),
+            QueueSnapshotFactory.build(current_status=SnapshotStatusEnum.LARGE),
+            QueueSnapshotFactory.build(current_status=SnapshotStatusEnum.NO_DATA),
         ]
         mock_restaurant_repo.count_active.return_value = 0
         mock_restaurant_repo.get_all.return_value = []
@@ -331,11 +320,11 @@ class TestGetSummary:
         mock_meal_period_service,
     ):
         snapshots = [
-            _make_snapshot(
+            QueueSnapshotFactory.build(
                 current_status=SnapshotStatusEnum.NO_DATA,
                 confidence_score=Decimal("0.50"),
             ),
-            _make_snapshot(
+            QueueSnapshotFactory.build(
                 current_status=SnapshotStatusEnum.NO_DATA,
                 confidence_score=Decimal("1.00"),
             ),
@@ -360,11 +349,11 @@ class TestGetSummary:
         mock_meal_period_service,
     ):
         snapshots = [
-            _make_snapshot(
+            QueueSnapshotFactory.build(
                 current_status=SnapshotStatusEnum.SMALL,
                 confidence_score=Decimal("0.80"),
             ),
-            _make_snapshot(
+            QueueSnapshotFactory.build(
                 current_status=SnapshotStatusEnum.NO_DATA,
                 confidence_score=Decimal("0.20"),
             ),
@@ -389,11 +378,11 @@ class TestGetSummary:
         mock_meal_period_service,
     ):
         snapshots = [
-            _make_snapshot(
+            QueueSnapshotFactory.build(
                 current_status=SnapshotStatusEnum.SMALL,
                 confidence_score=Decimal("0.60"),
             ),
-            _make_snapshot(
+            QueueSnapshotFactory.build(
                 current_status=SnapshotStatusEnum.LARGE,
                 confidence_score=Decimal("0.40"),
             ),
@@ -418,15 +407,15 @@ class TestGetSummary:
         mock_meal_period_service,
     ):
         snapshots = [
-            _make_snapshot(
+            QueueSnapshotFactory.build(
                 current_status=SnapshotStatusEnum.SMALL,
                 confidence_score=Decimal("0.70"),
             ),
-            _make_snapshot(
+            QueueSnapshotFactory.build(
                 current_status=SnapshotStatusEnum.MEDIUM,
                 confidence_score=Decimal("0.80"),
             ),
-            _make_snapshot(
+            QueueSnapshotFactory.build(
                 current_status=SnapshotStatusEnum.LARGE,
                 confidence_score=Decimal("0.90"),
             ),
@@ -451,15 +440,15 @@ class TestGetSummary:
         mock_meal_period_service,
     ):
         snapshots = [
-            _make_snapshot(
+            QueueSnapshotFactory.build(
                 current_status=SnapshotStatusEnum.NO_QUEUE,
                 confidence_score=Decimal("1.00"),
             ),
-            _make_snapshot(
+            QueueSnapshotFactory.build(
                 current_status=SnapshotStatusEnum.FOOD_ENDED,
                 confidence_score=Decimal("0.50"),
             ),
-            _make_snapshot(
+            QueueSnapshotFactory.build(
                 current_status=SnapshotStatusEnum.NO_DATA,
                 confidence_score=Decimal("0.10"),
             ),

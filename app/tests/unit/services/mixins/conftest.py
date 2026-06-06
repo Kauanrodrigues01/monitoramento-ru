@@ -4,7 +4,7 @@ import pytest
 
 from app.repositories.restaurant_repository import RestaurantRepository
 from app.services._mixins import RestaurantResolverMixin
-from app.tests.factories.restaurant_model_factory import RestaurantFactory
+from app.tests.factories.models.unit.restaurant_model_factory import RestaurantFactory
 
 
 class DummyRestaurantResolverService(RestaurantResolverMixin):

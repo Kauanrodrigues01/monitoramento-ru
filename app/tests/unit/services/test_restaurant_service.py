@@ -13,8 +13,8 @@ from app.models.restaurant import CampusEnum, MealPeriodEnum
 from app.repositories.queue_snapshot_repository import QueueSnapshotRepository
 from app.repositories.restaurant_repository import RestaurantRepository
 from app.services.restaurant_service import RestaurantService
-from app.tests.factories.restaurant_model_factory import RestaurantFactory
-from app.tests.factories.restaurant_schema_factory import (
+from app.tests.factories.models.unit.restaurant_model_factory import RestaurantFactory
+from app.tests.factories.schemas.restaurant_schema_factory import (
     build_restaurant_create_schema,
     build_restaurant_update_schema,
 )

@@ -9,10 +9,10 @@ from app.repositories.restaurant_repository import RestaurantRepository
 from app.services.meal_period_service import MealPeriodService
 from app.services.queue_report_service import QueueReportService
 from app.services.snapshot_status_service import SnapshotStatusService
-from app.tests.factories.queue_report_schema_factory import (
+from app.tests.factories.schemas.queue_report_schema_factory import (
     build_queue_report_create_schema,
 )
-from app.tests.factories.restaurant_model_factory import RestaurantFactory
+from app.tests.factories.models.unit.restaurant_model_factory import RestaurantFactory
 
 from ._base import (
     _GEO_TIMESTAMP,

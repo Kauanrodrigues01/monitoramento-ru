@@ -14,7 +14,7 @@ from app.repositories.restaurant_schedule_exception_repository import (
 )
 from app.repositories.restaurant_schedule_repository import RestaurantScheduleRepository
 from app.services.meal_period_service import MealPeriodService
-from app.tests.factories.restaurant_model_factory import (
+from app.tests.factories.models.unit.restaurant_model_factory import (
     RestaurantScheduleExceptionFactory,
     RestaurantScheduleFactory,
 )

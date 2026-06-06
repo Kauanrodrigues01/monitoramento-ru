@@ -1,5 +1,4 @@
 from datetime import UTC, datetime
-from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
@@ -15,34 +14,17 @@ from app.exceptions.queue_snapshot_exceptions import (
     QueueSnapshotNotFoundError,
 )
 from app.exceptions.restaurant_exceptions import RestaurantNotFoundError
-from app.models.queue_snapshot import QueueSnapshot, SnapshotStatusEnum
+from app.models.queue_snapshot import SnapshotStatusEnum
 from app.models.restaurant import MealPeriodEnum
 from app.repositories.queue_snapshot_repository import QueueSnapshotRepository
 from app.repositories.restaurant_repository import RestaurantRepository
 from app.schemas.queue_snapshot_schemas import QueueSnapshotResponse
 from app.services.meal_period_service import MealPeriodService
 from app.services.queue_snapshot_service import BULK_LIMIT, QueueSnapshotService
-from app.tests.factories.restaurant_model_factory import RestaurantFactory
-
-
-def _make_snapshot(
-    ru_id: int = 1,
-    meal_period: MealPeriodEnum = MealPeriodEnum.LUNCH,
-    current_status: SnapshotStatusEnum = SnapshotStatusEnum.NO_DATA,
-    reports_last_15m: int = 0,
-    last_report_at: datetime | None = None,
-    updated_at: datetime | None = None,
-    confidence_score: Decimal = Decimal("1.00"),
-) -> QueueSnapshot:
-    snapshot = QueueSnapshot()
-    snapshot.ru_id = ru_id
-    snapshot.meal_period = meal_period
-    snapshot.current_status = current_status
-    snapshot.reports_last_15m = reports_last_15m
-    snapshot.last_report_at = last_report_at
-    snapshot.updated_at = updated_at or datetime(2026, 5, 26, 12, 0, 0)
-    snapshot.confidence_score = confidence_score
-    return snapshot
+from app.tests.factories.models.unit.queue_snapshot_model_factory import (
+    QueueSnapshotFactory,
+)
+from app.tests.factories.models.unit.restaurant_model_factory import RestaurantFactory
 
 
 @pytest.fixture
@@ -76,7 +58,7 @@ class TestGetStatus:
         self, service, mock_repo, mock_restaurant_repo, mock_meal_period_service
     ):
         restaurant = RestaurantFactory.build(id=1)
-        snapshot = _make_snapshot(
+        snapshot = QueueSnapshotFactory.build(
             ru_id=1,
             meal_period=MealPeriodEnum.LUNCH,
             current_status=SnapshotStatusEnum.SMALL,
@@ -98,7 +80,7 @@ class TestGetStatus:
         self, service, mock_repo, mock_restaurant_repo, mock_meal_period_service
     ):
         restaurant = RestaurantFactory.build(id=1)
-        snapshot = _make_snapshot(ru_id=1, last_report_at=None)
+        snapshot = QueueSnapshotFactory.build(ru_id=1, last_report_at=None)
         mock_restaurant_repo.get_by_public_id.return_value = restaurant
         mock_meal_period_service.resolve.return_value = MealPeriodEnum.LUNCH
         mock_repo.get_by_ru_id_and_meal_period.return_value = snapshot
@@ -114,7 +96,7 @@ class TestGetStatus:
         restaurant = RestaurantFactory.build(id=1)
         fixed_now = datetime(2026, 5, 26, 12, 10, 0, tzinfo=UTC)
         last_report = datetime(2026, 5, 26, 12, 0, 0, tzinfo=UTC)
-        snapshot = _make_snapshot(ru_id=1, last_report_at=last_report)
+        snapshot = QueueSnapshotFactory.build(ru_id=1, last_report_at=last_report)
         mock_restaurant_repo.get_by_public_id.return_value = restaurant
         mock_meal_period_service.resolve.return_value = MealPeriodEnum.LUNCH
         mock_repo.get_by_ru_id_and_meal_period.return_value = snapshot
@@ -133,7 +115,7 @@ class TestGetStatus:
         restaurant = RestaurantFactory.build(id=1)
         fixed_now = datetime(2026, 5, 26, 12, 0, 0, tzinfo=UTC)
         future_report = datetime(2026, 5, 26, 12, 5, 0, tzinfo=UTC)
-        snapshot = _make_snapshot(ru_id=1, last_report_at=future_report)
+        snapshot = QueueSnapshotFactory.build(ru_id=1, last_report_at=future_report)
         mock_restaurant_repo.get_by_public_id.return_value = restaurant
         mock_meal_period_service.resolve.return_value = MealPeriodEnum.LUNCH
         mock_repo.get_by_ru_id_and_meal_period.return_value = snapshot
@@ -204,7 +186,9 @@ class TestGetStatus:
         self, service, mock_repo, mock_restaurant_repo, mock_meal_period_service
     ):
         restaurant = RestaurantFactory.build(id=7)
-        snapshot = _make_snapshot(ru_id=7, meal_period=MealPeriodEnum.DINNER)
+        snapshot = QueueSnapshotFactory.build(
+            ru_id=7, meal_period=MealPeriodEnum.DINNER
+        )
         mock_restaurant_repo.get_by_public_id.return_value = restaurant
         mock_meal_period_service.resolve.return_value = MealPeriodEnum.DINNER
         mock_repo.get_by_ru_id_and_meal_period.return_value = snapshot
@@ -220,7 +204,7 @@ class TestGetStatus:
         self, service, mock_repo, mock_restaurant_repo, mock_meal_period_service
     ):
         restaurant = RestaurantFactory.build(id=5)
-        snapshot = _make_snapshot(ru_id=5)
+        snapshot = QueueSnapshotFactory.build(ru_id=5)
         mock_restaurant_repo.get_by_public_id.return_value = restaurant
         mock_meal_period_service.resolve.return_value = MealPeriodEnum.LUNCH
         mock_repo.get_by_ru_id_and_meal_period.return_value = snapshot
@@ -258,7 +242,7 @@ class TestGetStatus:
     ):
         restaurant = RestaurantFactory.build(id=1)
         public_id = restaurant.public_id
-        snapshot = _make_snapshot(ru_id=1)
+        snapshot = QueueSnapshotFactory.build(ru_id=1)
         mock_restaurant_repo.get_by_public_id.return_value = restaurant
         mock_meal_period_service.resolve.return_value = MealPeriodEnum.LUNCH
         mock_repo.get_by_ru_id_and_meal_period.return_value = snapshot
@@ -376,7 +360,7 @@ class TestGetBulkStatus:
     ):
         closed = RestaurantFactory.build(id=1)
         open_ = RestaurantFactory.build(id=2)
-        snapshot = _make_snapshot(ru_id=2, meal_period=MealPeriodEnum.LUNCH)
+        snapshot = QueueSnapshotFactory.build(ru_id=2, meal_period=MealPeriodEnum.LUNCH)
         mock_restaurant_repo.get_bulk_by_public_ids.return_value = [closed, open_]
         mock_meal_period_service.resolve.side_effect = [
             RestaurantClosedAllDayError(),
@@ -396,7 +380,7 @@ class TestGetBulkStatus:
         restaurant = RestaurantFactory.build(id=3)
         last_report = datetime(2026, 5, 26, 11, 30, 0)
         updated = datetime(2026, 5, 26, 11, 45, 0)
-        snapshot = _make_snapshot(
+        snapshot = QueueSnapshotFactory.build(
             ru_id=3,
             meal_period=MealPeriodEnum.LUNCH,
             current_status=SnapshotStatusEnum.MEDIUM,
@@ -424,7 +408,7 @@ class TestGetBulkStatus:
         self, service, mock_repo, mock_restaurant_repo, mock_meal_period_service
     ):
         restaurant = RestaurantFactory.build(id=4)
-        snapshot = _make_snapshot(ru_id=4, last_report_at=None)
+        snapshot = QueueSnapshotFactory.build(ru_id=4, last_report_at=None)
         mock_restaurant_repo.get_bulk_by_public_ids.return_value = [restaurant]
         mock_meal_period_service.resolve.return_value = MealPeriodEnum.LUNCH
         mock_repo.get_bulk_by_ru_ids_and_meal_period.return_value = [snapshot]
@@ -439,8 +423,12 @@ class TestGetBulkStatus:
     ):
         lunch_ru = RestaurantFactory.build(id=1)
         dinner_ru = RestaurantFactory.build(id=2)
-        lunch_snapshot = _make_snapshot(ru_id=1, meal_period=MealPeriodEnum.LUNCH)
-        dinner_snapshot = _make_snapshot(ru_id=2, meal_period=MealPeriodEnum.DINNER)
+        lunch_snapshot = QueueSnapshotFactory.build(
+            ru_id=1, meal_period=MealPeriodEnum.LUNCH
+        )
+        dinner_snapshot = QueueSnapshotFactory.build(
+            ru_id=2, meal_period=MealPeriodEnum.DINNER
+        )
 
         mock_restaurant_repo.get_bulk_by_public_ids.return_value = [lunch_ru, dinner_ru]
         mock_meal_period_service.resolve.side_effect = [
@@ -538,9 +526,9 @@ class TestGetBulkStatus:
             MealPeriodEnum.LUNCH,
             MealPeriodEnum.LUNCH,
         ]
-        s1 = _make_snapshot(ru_id=1)
-        s2 = _make_snapshot(ru_id=2)
-        s3 = _make_snapshot(ru_id=3)
+        s1 = QueueSnapshotFactory.build(ru_id=1)
+        s2 = QueueSnapshotFactory.build(ru_id=2)
+        s3 = QueueSnapshotFactory.build(ru_id=3)
         mock_repo.get_bulk_by_ru_ids_and_meal_period.return_value = [s1, s2, s3]
 
         result = await service.get_bulk_status(

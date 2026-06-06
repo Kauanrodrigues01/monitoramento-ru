@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from app.models.queue_reports import ReportStatusEnum
 from app.models.restaurant import MealPeriodEnum
 from app.schemas.queue_report_schemas import QueueReportResponse, truncate_coordinate
-from app.tests.factories.queue_report_schema_factory import (
+from app.tests.factories.schemas.queue_report_schema_factory import (
     build_queue_report_create_schema,
 )
 

@@ -10,8 +10,8 @@ from app.exceptions.meal_period_exceptions import (
 )
 from app.exceptions.restaurant_exceptions import RestaurantNotFoundError
 from app.models.restaurant import MealPeriodEnum
-from app.tests.unit.services.queue_report_service._base import (
-    _make_queue_report,
+from app.tests.factories.models.unit.queue_report_model_factory import (
+    QueueReportFactory,
 )
 
 
@@ -25,8 +25,8 @@ class TestListRecentQueueReports:
         restaurant,
     ):
         expected = [
-            _make_queue_report(ru_id=restaurant.id),
-            _make_queue_report(ru_id=restaurant.id),
+            QueueReportFactory.build(ru_id=restaurant.id),
+            QueueReportFactory.build(ru_id=restaurant.id),
         ]
         mock_restaurant_repo.get_by_public_id.return_value = restaurant
         mock_meal_period_service.resolve.return_value = MealPeriodEnum.LUNCH

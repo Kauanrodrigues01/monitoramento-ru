@@ -1,39 +1,24 @@
 import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
-
 
 from app.models.queue_snapshot import SnapshotStatusEnum
 from app.models.restaurant import MealPeriodEnum
 from app.services.websocket_service import SnapshotWebSocketService
+from app.tests.factories.models.unit.queue_snapshot_model_factory import (
+    QueueSnapshotFactory,
+)
 
 _NOW = datetime(2026, 5, 27, 12, 0, 0, tzinfo=UTC)
 _RESTAURANT_PUBLIC_ID = uuid4()
 
 
-def _make_snapshot(
-    meal_period: MealPeriodEnum = MealPeriodEnum.LUNCH,
-    current_status: SnapshotStatusEnum = SnapshotStatusEnum.SMALL,
-    reports_last_15m: int = 3,
-    last_report_at: datetime | None = None,
-    confidence_score: Decimal = Decimal("0.85"),
-) -> SimpleNamespace:
-    return SimpleNamespace(
-        meal_period=meal_period,
-        current_status=current_status,
-        reports_last_15m=reports_last_15m,
-        last_report_at=last_report_at,
-        confidence_score=confidence_score,
-    )
-
-
 class TestPublishSnapshot:
     async def test_publishes_to_snapshots_channel(self):
         mock_redis = AsyncMock()
-        snapshot = _make_snapshot()
+        snapshot = QueueSnapshotFactory.build()
 
         with (
             patch(
@@ -52,7 +37,7 @@ class TestPublishSnapshot:
 
     async def test_payload_contains_correct_type(self):
         mock_redis = AsyncMock()
-        snapshot = _make_snapshot()
+        snapshot = QueueSnapshotFactory.build()
 
         with (
             patch(
@@ -71,7 +56,7 @@ class TestPublishSnapshot:
 
     async def test_payload_contains_restaurant_public_id(self):
         mock_redis = AsyncMock()
-        snapshot = _make_snapshot()
+        snapshot = QueueSnapshotFactory.build()
 
         with (
             patch(
@@ -90,7 +75,7 @@ class TestPublishSnapshot:
 
     async def test_payload_contains_current_status(self):
         mock_redis = AsyncMock()
-        snapshot = _make_snapshot(current_status=SnapshotStatusEnum.LARGE)
+        snapshot = QueueSnapshotFactory.build(current_status=SnapshotStatusEnum.LARGE)
 
         with (
             patch(
@@ -109,7 +94,7 @@ class TestPublishSnapshot:
 
     async def test_payload_contains_meal_period(self):
         mock_redis = AsyncMock()
-        snapshot = _make_snapshot(meal_period=MealPeriodEnum.DINNER)
+        snapshot = QueueSnapshotFactory.build(meal_period=MealPeriodEnum.DINNER)
 
         with (
             patch(
@@ -128,7 +113,7 @@ class TestPublishSnapshot:
 
     async def test_payload_contains_reports_last_15m(self):
         mock_redis = AsyncMock()
-        snapshot = _make_snapshot(reports_last_15m=7)
+        snapshot = QueueSnapshotFactory.build(reports_last_15m=7)
 
         with (
             patch(
@@ -147,7 +132,7 @@ class TestPublishSnapshot:
 
     async def test_payload_contains_confidence_score_as_float(self):
         mock_redis = AsyncMock()
-        snapshot = _make_snapshot(confidence_score=Decimal("0.75"))
+        snapshot = QueueSnapshotFactory.build(confidence_score=Decimal("0.75"))
 
         with (
             patch(
@@ -166,7 +151,7 @@ class TestPublishSnapshot:
 
     async def test_data_freshness_minutes_is_none_when_no_last_report(self):
         mock_redis = AsyncMock()
-        snapshot = _make_snapshot(last_report_at=None)
+        snapshot = QueueSnapshotFactory.build(last_report_at=None)
 
         with (
             patch(
@@ -186,7 +171,7 @@ class TestPublishSnapshot:
     async def test_data_freshness_minutes_calculated_from_last_report_at(self):
         mock_redis = AsyncMock()
         last_report_at = _NOW - timedelta(minutes=10)
-        snapshot = _make_snapshot(last_report_at=last_report_at)
+        snapshot = QueueSnapshotFactory.build(last_report_at=last_report_at)
 
         with (
             patch(
@@ -207,7 +192,7 @@ class TestPublishSnapshot:
         mock_redis = AsyncMock()
         # last_report_at no futuro (clock skew)
         last_report_at = _NOW + timedelta(minutes=5)
-        snapshot = _make_snapshot(last_report_at=last_report_at)
+        snapshot = QueueSnapshotFactory.build(last_report_at=last_report_at)
 
         with (
             patch(
@@ -226,7 +211,7 @@ class TestPublishSnapshot:
 
     async def test_updated_at_uses_utc_now(self):
         mock_redis = AsyncMock()
-        snapshot = _make_snapshot()
+        snapshot = QueueSnapshotFactory.build()
 
         with (
             patch(
@@ -245,7 +230,7 @@ class TestPublishSnapshot:
 
     async def test_publish_called_exactly_once(self):
         mock_redis = AsyncMock()
-        snapshot = _make_snapshot()
+        snapshot = QueueSnapshotFactory.build()
 
         with (
             patch(

@@ -24,6 +24,9 @@ from app.exceptions.queue_snapshot_exceptions import QueueSnapshotNotFoundError
 from app.exceptions.restaurant_exceptions import RestaurantNotFoundError
 from app.models.queue_reports import QueueReport
 from app.models.restaurant import MealPeriodEnum
+from app.tests.factories.models.unit.queue_report_model_factory import (
+    QueueReportFactory,
+)
 from app.tests.unit.services.queue_report_service._base import (
     _DEVICE_HASH,
     _DEVICE_ID,
@@ -35,7 +38,6 @@ from app.tests.unit.services.queue_report_service._base import (
     _PATCH_HAVERSINE,
     _PATCH_SETTINGS,
     _UNKNOWN_IP_HASH,
-    _make_queue_report,
     _setup_full_happy_path,
 )
 
@@ -513,7 +515,7 @@ class TestCreateQueueReport_Cooldown:
     ):
         mock_restaurant_repo.get_by_public_id.return_value = restaurant
         mock_repo.get_last_by_device_hash_within_minutes.return_value = (
-            _make_queue_report()
+            QueueReportFactory.build()
         )
 
         with (
@@ -597,7 +599,7 @@ class TestCreateQueueReport_Cooldown:
     ):
         mock_restaurant_repo.get_by_public_id.return_value = restaurant
         mock_repo.get_last_by_device_hash_within_minutes.return_value = (
-            _make_queue_report()
+            QueueReportFactory.build()
         )
 
         with (

@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from app.models.restaurant import CampusEnum
 from app.schemas.restaurant_schemas import RestaurantResponse
-from app.tests.factories.restaurant_schema_factory import (
+from app.tests.factories.schemas.restaurant_schema_factory import (
     build_restaurant_create_schema,
     build_restaurant_update_schema,
 )

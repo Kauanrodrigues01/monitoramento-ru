@@ -12,7 +12,7 @@ from app.schemas.queue_snapshot_schemas import (
     QueueSnapshotOverride,
     QueueSnapshotResponse,
 )
-from app.tests.factories.queue_snapshot_schema_factory import (
+from app.tests.factories.schemas.queue_snapshot_schema_factory import (
     build_queue_snapshot_bulk_item,
 )
 

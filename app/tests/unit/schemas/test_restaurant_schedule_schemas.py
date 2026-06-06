@@ -7,7 +7,7 @@ from pydantic import ValidationError
 
 from app.models.restaurant import MealPeriodEnum
 from app.schemas.restaurant_schedule_schemas import RestaurantScheduleResponse
-from app.tests.factories.restaurant_schema_factory import (
+from app.tests.factories.schemas.restaurant_schema_factory import (
     build_restaurant_schedule_create_schema,
     build_restaurant_schedule_update_schema,
 )

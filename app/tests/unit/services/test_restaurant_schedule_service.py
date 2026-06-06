@@ -15,11 +15,11 @@ from app.models.restaurant import MealPeriodEnum
 from app.repositories.restaurant_repository import RestaurantRepository
 from app.repositories.restaurant_schedule_repository import RestaurantScheduleRepository
 from app.services.restaurant_schedule_service import RestaurantScheduleService
-from app.tests.factories.restaurant_model_factory import (
+from app.tests.factories.models.unit.restaurant_model_factory import (
     RestaurantFactory,
     RestaurantScheduleFactory,
 )
-from app.tests.factories.restaurant_schema_factory import (
+from app.tests.factories.schemas.restaurant_schema_factory import (
     build_restaurant_schedule_create_schema,
     build_restaurant_schedule_update_schema,
 )

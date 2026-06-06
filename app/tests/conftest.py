@@ -1,37 +1,33 @@
-import pytest
-from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from app.core.database import TEST_DATABASE_URL
 from app.dependencies.database import get_db_session
 from app.main import app
 from app.models.base import Base
 
-test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 
-TestAsyncSessionLocal = async_sessionmaker(
-    bind=test_engine, class_=AsyncSession, expire_on_commit=False
-)
+@pytest_asyncio.fixture(scope="session", loop_scope="session")
+async def test_engine():
+    engine = create_async_engine(
+        TEST_DATABASE_URL,
+        echo=False,
+    )
+
+    yield engine
+
+    await engine.dispose()
 
 
-# scope="session" - executa 1 vez por execução inteira do pytest. É executado 1 vez a cada comando pytest
-# autouse=True - executa essa fixture automaticamente sem precisar chamar
-@pytest.fixture(scope="session")
-async def prepare_database():
-    """
-    pytest inicia
-    ↓
-    prepare_database()
-    ↓
-    create_all()
-    ↓
-    roda todos os testes
-    ↓
-    drop_all()
-    ↓
-    pytest termina
-    """
+@pytest_asyncio.fixture(scope="session", loop_scope="session", autouse=True)
+async def prepare_database(test_engine):
     async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
     yield
@@ -40,102 +36,42 @@ async def prepare_database():
         await conn.run_sync(Base.metadata.drop_all)
 
 
-@pytest.fixture
-async def test_db_session():
-    """
-    executa uma vez para cada teste
-
-    test_1
-    ↓
-    abre conexão
-    ↓
-    BEGIN transaction
-    ↓
-    entrega a sessão ao teste
-    ↓
-    teste roda normalmente
-      - pode fazer insert
-      - pode fazer update
-      - pode fazer delete
-      - pode até dar commit
-    ↓
-    fecha sessão
-    ↓
-    ROLLBACK transaction
-    ↓
-    tudo que o teste fez é desfeito
-
-    --------------------------
-
-    test_2
-    ↓
-    começa com banco limpo
-    """
+# MUDANÇA CRÍTICA: loop_scope="session" aqui também
+# sem isso, essa fixture cria um loop novo e a connection
+# do test_engine (que veio do loop da sessão) fica num loop diferente
+@pytest_asyncio.fixture(loop_scope="session")
+async def test_db_session(prepare_database, test_engine):
     async with test_engine.connect() as connection:
         transaction = await connection.begin()
 
-        db_session = TestAsyncSessionLocal(bind=connection)
+        session_factory = async_sessionmaker(
+            bind=connection,
+            class_=AsyncSession,
+            expire_on_commit=False,
+        )
 
-        yield db_session
+        session = session_factory()
 
-        await db_session.close()
+        try:
+            yield session
+        finally:
+            await session.close()
+            await transaction.rollback()
 
-        await transaction.rollback()
 
-
-@pytest.fixture
+@pytest_asyncio.fixture(loop_scope="session")
 async def client(test_db_session):
-    """
-    executa uma vez para cada teste que pedir "client"
-
-    endpoint normalmente:
-        Depends(get_db_session)
-            ↓
-            usa banco real
-
-    durante o teste:
-        sobrescrevemos get_db_session
-            ↓
-            agora ele usa test_db_session
-
-    resultado:
-        nenhum endpoint toca o banco de produção
-        todos usam o banco de teste
-    """
-
     async def override_get_db_session():
         yield test_db_session
 
     app.dependency_overrides[get_db_session] = override_get_db_session
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://test",
+    ) as client:
         yield client
 
     app.dependency_overrides.clear()
-
-
-"""
-pytest
- ↓
-prepare_database()
- create tables
- ↓
-test_1
-  test_db_session()
-    BEGIN
-  client()
-  teste roda
-    COMMIT (se houver)
-  ROLLBACK
- ↓
-test_2
-  BEGIN
-  banco limpo
-  ROLLBACK
- ↓
-test_3
- ...
- ↓
-prepare_database()
- drop tables
-"""

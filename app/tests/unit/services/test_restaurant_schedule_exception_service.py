@@ -25,11 +25,11 @@ from app.services.meal_period_service import MealPeriodService
 from app.services.restaurant_schedule_exception_service import (
     RestaurantScheduleExceptionService,
 )
-from app.tests.factories.restaurant_model_factory import (
+from app.tests.factories.models.unit.restaurant_model_factory import (
     RestaurantFactory,
     RestaurantScheduleExceptionFactory,
 )
-from app.tests.factories.restaurant_schema_factory import (
+from app.tests.factories.schemas.restaurant_schema_factory import (
     build_restaurant_schedule_exception_create_schema,
     build_restaurant_schedule_exception_update_schema,
 )

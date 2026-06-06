@@ -10,7 +10,7 @@ from app.schemas.restaurant_schedule_exception_schemas import (
     ActiveScheduleExceptionResponse,
     RestaurantScheduleExceptionResponse,
 )
-from app.tests.factories.restaurant_schema_factory import (
+from app.tests.factories.schemas.restaurant_schema_factory import (
     build_restaurant_schedule_exception_create_schema,
     build_restaurant_schedule_exception_update_schema,
 )

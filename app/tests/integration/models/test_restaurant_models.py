@@ -20,24 +20,9 @@ from app.tests.factories.models.integration.restaurant_model_factory import (
     RestaurantScheduleDBFactory,
     RestaurantScheduleExceptionDBFactory,
 )
+from app.tests.integration.helpers import persist
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-async def _persist(session, *instances):
-    """Adiciona e persiste as instâncias fornecidas usando a sessão de teste."""
-    for instance in instances:
-        session.add(instance)
-    await session.flush()
-    for instance in instances:
-        await session.refresh(instance)
-    return instances if len(instances) > 1 else instances[0]
-
 
 # ===========================================================================
 # Restaurant
@@ -47,33 +32,33 @@ async def _persist(session, *instances):
 class TestRestaurantCreation:
     async def test_creates_with_required_fields(self, test_db_session):
         restaurant = RestaurantDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         assert restaurant.id is not None
 
     async def test_generates_integer_primary_key(self, test_db_session):
         restaurant = RestaurantDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         assert isinstance(restaurant.id, int)
         assert restaurant.id > 0
 
     async def test_generates_uuid_public_id(self, test_db_session):
         restaurant = RestaurantDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         assert isinstance(restaurant.public_id, UUID)
 
     async def test_public_id_is_unique_across_restaurants(self, test_db_session):
         r1 = RestaurantDBFactory()
         r2 = RestaurantDBFactory()
-        await _persist(test_db_session, r1, r2)
+        await persist(test_db_session, r1, r2)
 
         assert r1.public_id != r2.public_id
 
     async def test_public_id_unique_constraint_is_enforced(self, test_db_session):
         r1 = RestaurantDBFactory()
-        await _persist(test_db_session, r1)
+        await persist(test_db_session, r1)
 
         # força o mesmo public_id para disparar o unique constraint
         r2 = RestaurantDBFactory(public_id=r1.public_id)
@@ -86,7 +71,7 @@ class TestRestaurantCreation:
 
     async def test_name_unique_constraint_is_enforced(self, test_db_session):
         r1 = RestaurantDBFactory(name="RU Único")
-        await _persist(test_db_session, r1)
+        await persist(test_db_session, r1)
 
         r2 = RestaurantDBFactory(name="RU Único")
         test_db_session.add(r2)
@@ -98,7 +83,7 @@ class TestRestaurantCreation:
 
     async def test_campus_unique_constraint_is_enforced(self, test_db_session):
         r1 = RestaurantAurorasDBFactory()
-        await _persist(test_db_session, r1)
+        await persist(test_db_session, r1)
 
         r2 = RestaurantAurorasDBFactory(name="RU Auroras 2")
         test_db_session.add(r2)
@@ -113,38 +98,38 @@ class TestRestaurantCreation:
             lat=Decimal("-4.215432"),
             lng=Decimal("-38.727981"),
         )
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         assert isinstance(restaurant.lat, Decimal)
         assert isinstance(restaurant.lng, Decimal)
 
     async def test_geofence_radius_defaults_to_80(self, test_db_session):
         restaurant = RestaurantDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         assert restaurant.geofence_radius_m == 80
 
     async def test_is_active_defaults_to_true(self, test_db_session):
         restaurant = RestaurantDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         assert restaurant.is_active is True
 
     async def test_created_at_is_set_automatically(self, test_db_session):
         restaurant = RestaurantDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         assert restaurant.created_at is not None
 
     async def test_updated_at_is_set_automatically(self, test_db_session):
         restaurant = RestaurantDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         assert restaurant.updated_at is not None
 
-    async def test_name_field_persists_correctly(self, test_db_session):
+    async def test_name_fieldpersists_correctly(self, test_db_session):
         restaurant = RestaurantDBFactory(name="RU Campo Alegre")
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         assert restaurant.name == "RU Campo Alegre"
 
@@ -152,19 +137,19 @@ class TestRestaurantCreation:
 class TestRestaurantCampusVariants:
     async def test_creates_palmares_campus(self, test_db_session):
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         assert restaurant.campus == CampusEnum.PALMARES
 
     async def test_creates_auroras_campus(self, test_db_session):
         restaurant = RestaurantAurorasDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         assert restaurant.campus == CampusEnum.AURORAS
 
     async def test_creates_liberdade_campus(self, test_db_session):
         restaurant = RestaurantLiberdadeDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         assert restaurant.campus == CampusEnum.LIBERDADE
 
@@ -177,54 +162,54 @@ class TestRestaurantCampusVariants:
 class TestRestaurantScheduleCreation:
     async def test_creates_with_valid_data(self, test_db_session):
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         schedule = RestaurantScheduleDBFactory(ru_id=restaurant.id)
-        await _persist(test_db_session, schedule)
+        await persist(test_db_session, schedule)
 
         assert schedule.id is not None
 
     async def test_generates_uuid_public_id(self, test_db_session):
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         schedule = RestaurantScheduleDBFactory(ru_id=restaurant.id)
-        await _persist(test_db_session, schedule)
+        await persist(test_db_session, schedule)
 
         assert isinstance(schedule.public_id, UUID)
 
     async def test_meal_period_stored_correctly(self, test_db_session):
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         schedule = RestaurantScheduleDBFactory(
             ru_id=restaurant.id,
             meal_period=MealPeriodEnum.DINNER,
         )
-        await _persist(test_db_session, schedule)
+        await persist(test_db_session, schedule)
 
         assert schedule.meal_period == MealPeriodEnum.DINNER
 
     async def test_opens_and_closes_at_stored_correctly(self, test_db_session):
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         schedule = RestaurantScheduleDBFactory(
             ru_id=restaurant.id,
             opens_at=time(11, 0),
             closes_at=time(14, 0),
         )
-        await _persist(test_db_session, schedule)
+        await persist(test_db_session, schedule)
 
         assert schedule.opens_at == time(11, 0)
         assert schedule.closes_at == time(14, 0)
 
     async def test_is_active_defaults_to_true(self, test_db_session):
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         schedule = RestaurantScheduleDBFactory(ru_id=restaurant.id)
-        await _persist(test_db_session, schedule)
+        await persist(test_db_session, schedule)
 
         assert schedule.is_active is True
 
@@ -232,7 +217,7 @@ class TestRestaurantScheduleCreation:
 class TestRestaurantScheduleConstraints:
     async def test_weekday_below_zero_raises(self, test_db_session):
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         schedule = RestaurantScheduleDBFactory(ru_id=restaurant.id, weekday=-1)
         test_db_session.add(schedule)
@@ -244,7 +229,7 @@ class TestRestaurantScheduleConstraints:
 
     async def test_weekday_above_five_raises(self, test_db_session):
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         schedule = RestaurantScheduleDBFactory(ru_id=restaurant.id, weekday=6)
         test_db_session.add(schedule)
@@ -256,40 +241,40 @@ class TestRestaurantScheduleConstraints:
 
     async def test_weekday_boundary_zero_is_valid(self, test_db_session):
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         schedule = RestaurantScheduleDBFactory(
             ru_id=restaurant.id,
             weekday=0,
             meal_period=MealPeriodEnum.LUNCH,
         )
-        await _persist(test_db_session, schedule)
+        await persist(test_db_session, schedule)
 
         assert schedule.id is not None
 
     async def test_weekday_boundary_five_is_valid(self, test_db_session):
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         schedule = RestaurantScheduleDBFactory(
             ru_id=restaurant.id,
             weekday=5,
             meal_period=MealPeriodEnum.LUNCH,
         )
-        await _persist(test_db_session, schedule)
+        await persist(test_db_session, schedule)
 
         assert schedule.id is not None
 
     async def test_duplicate_ru_weekday_meal_period_raises(self, test_db_session):
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         s1 = RestaurantScheduleDBFactory(
             ru_id=restaurant.id,
             weekday=1,
             meal_period=MealPeriodEnum.LUNCH,
         )
-        await _persist(test_db_session, s1)
+        await persist(test_db_session, s1)
 
         s2 = RestaurantScheduleDBFactory(
             ru_id=restaurant.id,
@@ -305,7 +290,7 @@ class TestRestaurantScheduleConstraints:
 
     async def test_same_weekday_different_meal_period_is_allowed(self, test_db_session):
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         lunch = RestaurantScheduleDBFactory(
             ru_id=restaurant.id,
@@ -317,14 +302,14 @@ class TestRestaurantScheduleConstraints:
             weekday=2,
             meal_period=MealPeriodEnum.DINNER,
         )
-        await _persist(test_db_session, lunch, dinner)
+        await persist(test_db_session, lunch, dinner)
 
         assert lunch.id is not None
         assert dinner.id is not None
 
     async def test_opens_at_after_closes_at_raises(self, test_db_session):
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         schedule = RestaurantScheduleDBFactory(
             ru_id=restaurant.id,
@@ -341,7 +326,7 @@ class TestRestaurantScheduleConstraints:
 
     async def test_opens_at_equal_closes_at_raises(self, test_db_session):
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         schedule = RestaurantScheduleDBFactory(
             ru_id=restaurant.id,
@@ -358,10 +343,10 @@ class TestRestaurantScheduleConstraints:
 
     async def test_cascade_delete_removes_schedules(self, test_db_session):
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         schedule = RestaurantScheduleDBFactory(ru_id=restaurant.id)
-        await _persist(test_db_session, schedule)
+        await persist(test_db_session, schedule)
 
         schedule_id = schedule.id
 
@@ -380,7 +365,7 @@ class TestRestaurantScheduleConstraints:
 class TestRestaurantScheduleExceptionCreation:
     async def test_creates_closed_whole_day(self, test_db_session):
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         exc = RestaurantScheduleExceptionDBFactory(
             ru_id=restaurant.id,
@@ -389,7 +374,7 @@ class TestRestaurantScheduleExceptionCreation:
             opens_at=None,
             closes_at=None,
         )
-        await _persist(test_db_session, exc)
+        await persist(test_db_session, exc)
 
         assert exc.id is not None
         assert exc.meal_period is None
@@ -398,7 +383,7 @@ class TestRestaurantScheduleExceptionCreation:
 
     async def test_creates_closed_specific_period(self, test_db_session):
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         exc = RestaurantScheduleExceptionDBFactory(
             ru_id=restaurant.id,
@@ -408,13 +393,13 @@ class TestRestaurantScheduleExceptionCreation:
             opens_at=None,
             closes_at=None,
         )
-        await _persist(test_db_session, exc)
+        await persist(test_db_session, exc)
 
         assert exc.meal_period == MealPeriodEnum.DINNER
 
     async def test_creates_custom_hours(self, test_db_session):
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         exc = RestaurantScheduleExceptionDBFactory(
             ru_id=restaurant.id,
@@ -424,7 +409,7 @@ class TestRestaurantScheduleExceptionCreation:
             opens_at=time(11, 30),
             closes_at=time(13, 0),
         )
-        await _persist(test_db_session, exc)
+        await persist(test_db_session, exc)
 
         assert exc.exception_type == ExceptionTypeEnum.CUSTOM_HOURS
         assert exc.opens_at == time(11, 30)
@@ -432,26 +417,26 @@ class TestRestaurantScheduleExceptionCreation:
 
     async def test_reason_field_is_optional(self, test_db_session):
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         exc = RestaurantScheduleExceptionDBFactory(
             ru_id=restaurant.id,
             reason=None,
         )
-        await _persist(test_db_session, exc)
+        await persist(test_db_session, exc)
 
         assert exc.reason is None
 
     async def test_reason_field_stores_value(self, test_db_session):
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         exc = RestaurantScheduleExceptionDBFactory(
             ru_id=restaurant.id,
             exception_date=date(2025, 9, 7),
             reason="Feriado Nacional",
         )
-        await _persist(test_db_session, exc)
+        await persist(test_db_session, exc)
 
         assert exc.reason == "Feriado Nacional"
 
@@ -460,7 +445,7 @@ class TestRestaurantScheduleExceptionConstraints:
     async def test_duplicate_whole_day_exception_raises(self, test_db_session):
         """Índice parcial: uq_restaurant_schedule_exception_whole_day."""
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         same_date = date(2025, 10, 12)
 
@@ -469,7 +454,7 @@ class TestRestaurantScheduleExceptionConstraints:
             exception_date=same_date,
             meal_period=None,
         )
-        await _persist(test_db_session, e1)
+        await persist(test_db_session, e1)
 
         e2 = RestaurantScheduleExceptionDBFactory(
             ru_id=restaurant.id,
@@ -486,7 +471,7 @@ class TestRestaurantScheduleExceptionConstraints:
     async def test_duplicate_period_exception_raises(self, test_db_session):
         """UniqueConstraint: (ru_id, exception_date, meal_period)."""
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         same_date = date(2025, 11, 2)
 
@@ -495,7 +480,7 @@ class TestRestaurantScheduleExceptionConstraints:
             exception_date=same_date,
             meal_period=MealPeriodEnum.LUNCH,
         )
-        await _persist(test_db_session, e1)
+        await persist(test_db_session, e1)
 
         e2 = RestaurantScheduleExceptionDBFactory(
             ru_id=restaurant.id,
@@ -512,7 +497,7 @@ class TestRestaurantScheduleExceptionConstraints:
     async def test_same_date_different_periods_is_allowed(self, test_db_session):
         """LUNCH e DINNER na mesma data são exceções distintas e válidas."""
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         same_date = date(2025, 8, 20)
 
@@ -526,7 +511,7 @@ class TestRestaurantScheduleExceptionConstraints:
             exception_date=same_date,
             meal_period=MealPeriodEnum.DINNER,
         )
-        await _persist(test_db_session, lunch_exc, dinner_exc)
+        await persist(test_db_session, lunch_exc, dinner_exc)
 
         assert lunch_exc.id is not None
         assert dinner_exc.id is not None
@@ -535,7 +520,7 @@ class TestRestaurantScheduleExceptionConstraints:
         """Dois RUs diferentes podem ter exceção no mesmo dia."""
         r1 = RestaurantPalmaresDBFactory()
         r2 = RestaurantAurorasDBFactory()
-        await _persist(test_db_session, r1, r2)
+        await persist(test_db_session, r1, r2)
 
         same_date = date(2025, 12, 25)
 
@@ -549,14 +534,14 @@ class TestRestaurantScheduleExceptionConstraints:
             exception_date=same_date,
             meal_period=None,
         )
-        await _persist(test_db_session, e1, e2)
+        await persist(test_db_session, e1, e2)
 
         assert e1.id is not None
         assert e2.id is not None
 
     async def test_custom_hours_opens_after_closes_raises(self, test_db_session):
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         exc = RestaurantScheduleExceptionDBFactory(
             ru_id=restaurant.id,
@@ -575,7 +560,7 @@ class TestRestaurantScheduleExceptionConstraints:
 
     async def test_custom_hours_opens_equal_closes_raises(self, test_db_session):
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         exc = RestaurantScheduleExceptionDBFactory(
             ru_id=restaurant.id,
@@ -594,10 +579,10 @@ class TestRestaurantScheduleExceptionConstraints:
 
     async def test_cascade_delete_removes_exceptions(self, test_db_session):
         restaurant = RestaurantPalmaresDBFactory()
-        await _persist(test_db_session, restaurant)
+        await persist(test_db_session, restaurant)
 
         exc = RestaurantScheduleExceptionDBFactory(ru_id=restaurant.id)
-        await _persist(test_db_session, exc)
+        await persist(test_db_session, exc)
 
         exc_id = exc.id
 

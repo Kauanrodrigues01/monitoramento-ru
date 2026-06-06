@@ -10,6 +10,7 @@ omit =
     */core/seed.py
     */dependencies/database.py
     */seed_dev.py
+    */debug.py
 
 [report]
 exclude_lines =

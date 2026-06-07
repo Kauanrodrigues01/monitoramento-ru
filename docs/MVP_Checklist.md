@@ -103,62 +103,37 @@
 - [x] Endpoint `GET /v1/metrics/summary` — público, 30 req/min
 - [x] Schema `MetricsSummaryResponse`: `total_active_restaurants`, `open_now`, `reports_last_15m`, `reports_today`, `status_distribution`, `avg_confidence`
 - [x] `MetricsService.get_summary()` — queries diretas via repositórios; sem cache no MVP
-- [x] Testes: contagem de ativos, `open_now`, `reports_last_15m`, `reports_today`, `status_distribution`, `avg_confidence` exclui `NO_DATA`
+- [x] Testes
+
+### Refactoring
+- [x] Extraído `_get_restaurant_by_public_id_or_error` — removido dos services duplicados e centralizado em `app/services/_utils.py`
+- [x] Testes das classes afetadas atualizados
+
+### Testes com banco real
+
+#### Models — constraints e invariantes
+- [x] `QueueSnapshot.ck_avg_status_value_range` — rejeita valores fora de `[0.00, 3.00]`; aceita `NULL`
+- [x] `QueueReport.ck_confidence_score_range` — rejeita valores fora de `[0.05, 1.00]`
+- [x] `Restaurant` — `public_id` UUID único; `is_active = True` por padrão
+- [x] `RestaurantSchedule` — `opens_at < closes_at`; `meal_period` é enum
+- [x] `RestaurantScheduleException` — `opens_at < closes_at` para `CUSTOM_HOURS`; `meal_period` nullable
+- [x] Cascade `ondelete` — deletar `Restaurant` remove `QueueSnapshot` e `QueueReport`
+
+#### Repositories — queries
+- [x] `QueueReportRepository`
+- [x] `QueueSnapshotRepository`
+- [x] `RestaurantRepository`
+- [x] `RestaurantScheduleRepository`
+- [x] `RestaurantScheduleExceptionRepository`
 
 ---
 
 ## 🔲 Pendente — ordenado por prioridade
 
-<!-- ### 1. Métricas por restaurante (`GET /v1/restaurants/{public_id}/metrics`)
+### 1. Testes de integração (endpoints)
 
-Dados de atividade do dia corrente para a página de detalhe do restaurante.
+> Requerem PostgreSQL + Redis rodando. Adicionar serviços ao CI antes de habilitar.
 
-```json
-{
-  "reports_today": 42,
-  "avg_confidence_today": 0.83,
-  "status_history_today": [
-    { "hour": 11, "meal_period": "LUNCH",  "dominant_status": "SMALL",  "report_count": 5 },
-    { "hour": 12, "meal_period": "LUNCH",  "dominant_status": "LARGE",  "report_count": 12 },
-    { "hour": 17, "meal_period": "DINNER", "dominant_status": "SMALL",  "report_count": 3 }
-  ]
-}
-```
-
-- `dominant_status` = status com maior soma de `confidence_score` na hora (moda ponderada)
-- `status_history_today` alimenta gráfico de linha ou sparkline no frontend
-- Retorna `404` se restaurante não existir; métricas zeradas se sem relatos hoje
-
-- [ ] Schema `RestaurantMetricsResponse`, `StatusHistoryEntry`
-- [ ] `QueueReportRepository.list_today_by_ru` — `created_at BETWEEN day_start AND day_end` no timezone `APP_TIMEZONE`
-- [ ] `MetricsService.get_restaurant_metrics(ru_id, day)` — agrupa por hora em Python
-- [ ] Endpoint público, 30 req/min
-- [ ] Testes: relatos do dia no timezone correto, `avg_confidence_today = null` sem relatos, `dominant_status` por hora, `404` para restaurante inexistente -->
-
-### 1. Refactoring
-- [x] Extrair `_get_restaurant_by_public_id_or_error` — duplicado em `QueueReportService`, `RestaurantScheduleService`, `RestaurantScheduleExceptionService` e `QueueSnapshotService`. Candidato a `RestaurantResolverMixin` ou `app/services/_utils.py`. Teste em `test_get_restaurant_or_error.py` já cobre o comportamento.
-- [x] Atualizar testes das classes afetadas
-
-### 2. Testes com banco real
-
-> Requerem PostgreSQL real (adicionar ao CI antes de habilitar).
-
-#### Models — constraints e invariantes
-- [x] `QueueSnapshot` — exemplo: ck_avg_status_value_range` — rejeita valores fora de `[0.00, 3.00]`; aceita `NULL`
-- [x] `QueueReport` — exemplo: `ck_confidence_score_range` — rejeita valores fora de `[0.05, 1.00]`
-- [x] `Restaurant` — `public_id` é UUID único; `active` é `True` por padrão
-- [x] `RestaurantSchedule` — `opens_at < closes_at`; `meal_period` é enum
-- [x] `RestaurantScheduleException` — `date` é data; `opens_at < closes_at` para `CUSTOM_HOURS`; `meal_period` é enum ou `None` 
-- [x] Cascade `ondelete` — deletar `Restaurant` remove `QueueSnapshot` e `QueueReport`
-
-#### Repositories — queries
-- [x] `QueueReportRepository.`
-- [x] `QueueSnapshotRepository.`
-- [x] `RestaurantRepository.`
-- [x] `RestaurantScheduleRepository.`
-- [x] `RestaurantScheduleExceptionRepository.`
-
-#### Integração — endpoints
 - [ ] `restaurants.py`
 - [ ] `restaurant_schedules.py`
 - [ ] `restaurant_schedule_exceptions.py`
@@ -228,3 +203,4 @@ Dados de atividade do dia corrente para a página de detalhe do restaurante.
 | Recálculo snapshot | Celery | Background Tasks FastAPI | Bridge para MVP |
 | Expiração `FOOD_ENDED` | TTL Redis | Janela implícita de 5 min | Sem Redis no MVP — evolui com Celery |
 | Broker Celery | Redis | RabbitMQ | Persistência, DLQ e visibilidade |
+

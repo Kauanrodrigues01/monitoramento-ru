@@ -154,10 +154,11 @@ Dados de atividade do dia corrente para a página de detalhe do restaurante.
 ```
 
 #### Repositories — queries
-- [ ] `QueueReportRepository.get_last_by_device_hash_within_minutes` — janela de tempo correta; ignora relatos fora da janela
-- [ ] `QueueReportRepository.list_recent_by_period` — filtra por `ru_id`, `meal_period` e data; respeita `limit`/`offset`
-- [ ] `QueueSnapshotRepository.get_by_ru_id_and_meal_period` — chave composta; `None` quando não existe
-- [ ] `RestaurantRepository.get_by_public_id` — `None` para UUID inexistente; ignora restaurantes inativos
+- [x] `QueueReportRepository.`
+- [x] `QueueSnapshotRepository.`
+- [x] `RestaurantRepository.`
+- [x] `RestaurantScheduleRepository.`
+- [x] `RestaurantScheduleExceptionRepository.`
 
 #### Integração — endpoints
 - [ ] `restaurants.py`

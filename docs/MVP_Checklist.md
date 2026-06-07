@@ -139,7 +139,6 @@ Dados de atividade do dia corrente para a página de detalhe do restaurante.
 - [x] Extrair `_get_restaurant_by_public_id_or_error` — duplicado em `QueueReportService`, `RestaurantScheduleService`, `RestaurantScheduleExceptionService` e `QueueSnapshotService`. Candidato a `RestaurantResolverMixin` ou `app/services/_utils.py`. Teste em `test_get_restaurant_or_error.py` já cobre o comportamento.
 - [x] Atualizar testes das classes afetadas
 
-```markdown
 ### 2. Testes com banco real
 
 > Requerem PostgreSQL real (adicionar ao CI antes de habilitar).
@@ -151,7 +150,6 @@ Dados de atividade do dia corrente para a página de detalhe do restaurante.
 - [x] `RestaurantSchedule` — `opens_at < closes_at`; `meal_period` é enum
 - [x] `RestaurantScheduleException` — `date` é data; `opens_at < closes_at` para `CUSTOM_HOURS`; `meal_period` é enum ou `None` 
 - [x] Cascade `ondelete` — deletar `Restaurant` remove `QueueSnapshot` e `QueueReport`
-```
 
 #### Repositories — queries
 - [x] `QueueReportRepository.`

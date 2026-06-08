@@ -13,9 +13,21 @@ from app.core.exception_handlers import (
 from app.exceptions.base import AppException
 
 
-def _make_request(path: str = "/test") -> Request:
+def _make_request(
+    path: str = "/test",
+    method: str = "GET",
+    route_path: str | None = None,
+) -> Request:
     mock = MagicMock(spec=Request)
+
     mock.url.path = path
+    mock.method = method
+
+    if route_path is None:
+        mock.scope = {}
+    else:
+        mock.scope = {"route": MagicMock(path=route_path)}
+
     return mock
 
 
@@ -99,6 +111,7 @@ class TestAppExceptionHandler:
 def _make_rate_limit_exc(headers: dict | None = None) -> MagicMock:
     exc = MagicMock(spec=RateLimitExceeded)
     exc.headers = headers
+    exc.detail = "60 per minute"
     return exc
 
 
@@ -135,3 +148,48 @@ class TestRateLimitExceededHandler:
         response = await rate_limit_exceeded_handler(_make_request(), exc)
 
         assert "Retry-After" not in response.headers
+
+    @pytest.mark.asyncio
+    @patch("app.core.exception_handlers.track_rate_limit_blocked")
+    async def test_should_track_rate_limit_metric(
+        self,
+        mock_track_rate_limit_blocked,
+    ):
+        exc = _make_rate_limit_exc()
+
+        await rate_limit_exceeded_handler(
+            _make_request(
+                method="POST",
+                route_path="/api/v1/restaurants/",
+            ),
+            exc,
+        )
+
+        mock_track_rate_limit_blocked.assert_called_once_with(
+            endpoint="/api/v1/restaurants/",
+            method="POST",
+            limit="60 per minute",
+        )
+
+    @pytest.mark.asyncio
+    @patch("app.core.exception_handlers.track_rate_limit_blocked")
+    async def test_should_use_string_unknown_when_route_is_missing(
+        self,
+        mock_track_rate_limit_blocked,
+    ):
+        exc = _make_rate_limit_exc()
+
+        await rate_limit_exceeded_handler(
+            _make_request(
+                path="/fallback-path",
+                method="POST",
+                route_path=None,
+            ),
+            exc,
+        )
+
+        mock_track_rate_limit_blocked.assert_called_once_with(
+            endpoint="unknown",
+            method="POST",
+            limit="60 per minute",
+        )

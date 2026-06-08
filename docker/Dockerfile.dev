@@ -21,8 +21,8 @@ COPY . .
 
 RUN uv sync --frozen --no-dev
 
-RUN chmod +x /app/scripts/start.sh
+RUN chmod +x /app/scripts/start-dev.sh
 
 EXPOSE 8000
 
-CMD ["/app/scripts/start.sh"]
+CMD ["/app/scripts/start-dev.sh"]

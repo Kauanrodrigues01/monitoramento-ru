@@ -7,8 +7,24 @@ from fastapi import BackgroundTasks
 from app.core.datetime_utils import to_app_tz, utc_now
 from app.core.geo_utils import GeoUtils
 from app.core.logging import get_logger
+from app.core.observability.business_metrics import QueueReportRejectReason
+from app.core.observability.helpers import (
+    observe_queue_report_confidence_score,
+    observe_queue_report_distance,
+    track_queue_report_created,
+    track_queue_report_rejected,
+)
 from app.core.settings import settings
+from app.exceptions.geo_signature_exceptions import (
+    ExpiredGeoSignatureException,
+    InvalidGeoSignatureException,
+)
 from app.exceptions.header_exceptions import RequiredDeviceIdHeaderError
+from app.exceptions.meal_period_exceptions import (
+    MealPeriodClosedError,
+    OutsideMealHoursError,
+    RestaurantClosedAllDayError,
+)
 from app.exceptions.queue_report_exceptions import (
     QueueReportLocationOutOfGeofenceError,
     QueueReportTooRecentError,
@@ -122,6 +138,10 @@ class QueueReportService(RestaurantResolverMixin):
         ip_hash = IpService.hash_ip(ip if not unknown_ip else "unknown")
 
         if not device_id:
+            track_queue_report_rejected(
+                restaurant=restaurant,
+                reason=QueueReportRejectReason.MISSING_DEVICE_ID,
+            )
             raise RequiredDeviceIdHeaderError()
 
         device_hash = hashlib.sha256(device_id.encode()).hexdigest()
@@ -131,13 +151,26 @@ class QueueReportService(RestaurantResolverMixin):
         # IMPORTANTE: usa data.lat/lng originais (sem truncagem) — a truncagem ocorre
         # somente após esta validação para garantir que o payload reconstituído aqui
         # seja idêntico ao que o cliente assinou com toFixed(6).
-        GeoSignatureService.validate(
-            lat=data.lat,
-            lng=data.lng,
-            accuracy_m=data.accuracy_m,
-            geo_timestamp=data.geo_timestamp,
-            received_signature=data.geo_signature,
-        )
+        try:
+            GeoSignatureService.validate(
+                lat=data.lat,
+                lng=data.lng,
+                accuracy_m=data.accuracy_m,
+                geo_timestamp=data.geo_timestamp,
+                received_signature=data.geo_signature,
+            )
+        except ExpiredGeoSignatureException:
+            track_queue_report_rejected(
+                restaurant=restaurant,
+                reason=QueueReportRejectReason.EXPIRED_GEO_SIGNATURE,
+            )
+            raise
+        except InvalidGeoSignatureException:
+            track_queue_report_rejected(
+                restaurant=restaurant,
+                reason=QueueReportRejectReason.INVALID_GEO_SIGNATURE,
+            )
+            raise
 
         # Trunca lat/lng para 6 casas decimais (ROUND_DOWN) para armazenamento
         # consistente. Só feito aqui, após a validação da assinatura.
@@ -152,6 +185,10 @@ class QueueReportService(RestaurantResolverMixin):
             device_hash=device_hash, minutes=settings.QUEUE_REPORT_COOLDOWN_MINUTES
         )
         if recent_report:
+            track_queue_report_rejected(
+                restaurant=restaurant,
+                reason=QueueReportRejectReason.COOLDOWN,
+            )
             raise QueueReportTooRecentError()
 
         distance_m = GeoUtils.haversine_distance_m(
@@ -175,11 +212,39 @@ class QueueReportService(RestaurantResolverMixin):
                     distance_m,
                     restaurant.geofence_radius_m,
                 )
+                track_queue_report_rejected(
+                    restaurant=restaurant,
+                    reason=QueueReportRejectReason.OUTSIDE_GEOFENCE,
+                )
+                observe_queue_report_distance(
+                    restaurant=restaurant,
+                    distance_meters=distance_m,
+                    geofence_result="outside",
+                )
                 raise QueueReportLocationOutOfGeofenceError()
 
-        dt = to_app_tz(datetime.fromtimestamp(data.geo_timestamp, tz=UTC))
+        observe_queue_report_distance(
+            restaurant=restaurant,
+            distance_meters=distance_m,
+            geofence_result="inside",
+        )
 
-        meal_period = await self.meal_period_service.resolve(ru_id=restaurant.id, at=dt)
+        try:
+            dt = to_app_tz(datetime.fromtimestamp(data.geo_timestamp, tz=UTC))
+
+            meal_period = await self.meal_period_service.resolve(
+                ru_id=restaurant.id, at=dt
+            )
+        except (
+            RestaurantClosedAllDayError,
+            MealPeriodClosedError,
+            OutsideMealHoursError,
+        ):
+            track_queue_report_rejected(
+                restaurant=restaurant,
+                reason=QueueReportRejectReason.OUTSIDE_MEAL_HOURS,
+            )
+            raise
 
         snapshot = await self.snapshot_repo.get_by_ru_id_and_meal_period(
             ru_id=restaurant.id, meal_period=meal_period
@@ -208,6 +273,10 @@ class QueueReportService(RestaurantResolverMixin):
             await self.repo.db_session.commit()
         except Exception:
             await self.repo.db_session.rollback()
+            track_queue_report_rejected(
+                restaurant=restaurant,
+                reason=QueueReportRejectReason.OTHER,
+            )
             raise
 
         logger.info(
@@ -219,6 +288,16 @@ class QueueReportService(RestaurantResolverMixin):
         )
 
         background_tasks.add_task(self._update_snapshot_safe, restaurant.id)
+
+        track_queue_report_created(
+            restaurant=restaurant,
+            report_status=queue_report.status.value,
+        )
+
+        observe_queue_report_confidence_score(
+            restaurant=restaurant,
+            confidence_score=confidence_score,
+        )
 
         return queue_report
 

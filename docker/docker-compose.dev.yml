@@ -1,9 +1,9 @@
-name: monitoramento-ru-dev
+name: monitor-ru-dev
 
 services:
   api:
-    container_name: monitoramento-ru-api-dev
-    image: monitoramento-ru-api:dev
+    container_name: monitor-ru-api-dev
+    image: monitor-ru-api:dev
     build:
       context: ..
       dockerfile: docker/Dockerfile.dev
@@ -19,14 +19,34 @@ services:
       CORS_ALLOWED_ORIGINS: '["*"]'
     ports:
       - "8000:8000"
+    volumes:
+      - ../app:/app/app
+
+  prometheus:
+    image: prom/prometheus:v3.6.0
+    restart: unless-stopped
     depends_on:
-      db:
+      api:
         condition: service_started
-      redis:
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+
+  grafana:
+    image: grafana/grafana:12.2.0
+    restart: unless-stopped
+    depends_on:
+      prometheus:
         condition: service_started
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
 
   db:
-    container_name: monitoramento-ru-db-dev
+    container_name: monitor-ru-db-dev
     image: postgres:17.2-alpine
     restart: unless-stopped
     environment:
@@ -39,9 +59,18 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ../scripts:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-mydb}"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
-    container_name: monitoramento-ru-redis-dev
+    container_name: monitor-ru-redis-dev
     image: redis:8.2-alpine
     restart: unless-stopped
     command: redis-server --appendonly yes
@@ -49,7 +78,19 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test:
+        - CMD
+        - sh
+        - -c
+        - redis-cli ping || exit 1
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
 
 volumes:
   postgres_data:
   redis_data:
+  grafana_data:
+  prometheus_data:

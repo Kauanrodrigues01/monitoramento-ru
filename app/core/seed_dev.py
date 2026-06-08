@@ -179,7 +179,7 @@ async def seed_reports() -> None:
                 # Reutiliza a lógica pura _compute_status sem instanciar o serviço completo
                 # (evita deps de repos que não precisamos aqui)
                 svc_stub = object.__new__(SnapshotStatusService)
-                new_status, new_confidence = svc_stub._compute_status(recent)  # type: ignore[attr-defined]
+                new_status, new_confidence, _ = svc_stub._compute_status(recent)  # type: ignore[attr-defined]
 
                 snapshot.current_status = new_status
                 snapshot.reports_last_15m = len(recent)

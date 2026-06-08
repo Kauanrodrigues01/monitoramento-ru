@@ -1,9 +1,9 @@
-name: monitoramento-ru
+name: monitor-ru
 
 services:
   api:
-    container_name: monitoramento-ru-api
-    image: monitoramento-ru-api:latest
+    container_name: monitor-ru-api
+    image: monitor-ru-api:latest
     build:
       context: ..
       dockerfile: docker/Dockerfile
@@ -25,14 +25,25 @@ services:
       REDIS_URL: redis://redis:6379/0
       DEBUG: "${DEBUG:-False}"
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS}"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     depends_on:
       db:
-        condition: service_started
+        condition: service_healthy
       redis:
         condition: service_healthy
 
   db:
-    container_name: monitoramento-ru-db
+    container_name: monitor-ru-db
     image: postgres:17.2-alpine
     restart: unless-stopped
     environment:
@@ -41,9 +52,18 @@ services:
       POSTGRES_DB: "${DB_NAME:-mydb}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-mydb}"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
-    container_name: monitoramento-ru-redis
+    container_name: monitor-ru-redis
     image: redis:8.2-alpine
     restart: unless-stopped
     command: redis-server --appendonly yes

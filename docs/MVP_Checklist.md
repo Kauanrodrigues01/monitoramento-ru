@@ -105,8 +105,18 @@
 - [x] `MetricsService.get_summary()` — queries diretas via repositórios; sem cache no MVP
 - [x] Testes
 
+### Observabilidade — Prometheus
+- [x] Métricas HTTP automáticas via `prometheus-fastapi-instrumentator`
+- [x] Endpoint `/metrics`
+- [x] Métricas customizadas de reports: `queue_reports_created_total`, `queue_reports_rejected_total`, `queue_reports_confidence_score`, `queue_report_distance_meters`
+- [x] Métricas de negócio: `business_requests_total`, `rate_limit_blocked_total`
+- [x] Instrumentação das metricas no `QueueReportService` e `SlowAPI` (via exception handler de `RateLimitExceeded`)
+- [x] Middleware para instrumentação da metrica `business_requests_total` que pega apenas os endpoints de negócio usando as tags dos routers e exclui `/metrics`, WebSockets, debug, health checks e etc...
+- [x] Health checks: `GET /health/live`, `GET /health/ready`
+- [x] Ambiente de desenvolvimento com Grafana via Docker Compose
+
 ### Refactoring
-- [x] Extraído `_get_restaurant_by_public_id_or_error` — removido dos services duplicados e centralizado em `app/services/_utils.py`
+- [x] Extraído `_get_restaurant_by_public_id_or_error` — centralizado em `app/services/_utils.py`
 - [x] Testes das classes afetadas atualizados
 
 ### Testes com banco real
@@ -130,7 +140,11 @@
 
 ## 🔲 Pendente — ordenado por prioridade
 
-### 1. Testes de integração (endpoints)
+### 1. Observabilidade — Prometheus
+- [ ] Adicionar testes para os arquivos em app/core/observability
+- [ ] Atualizar testes de QueueReportService para verificar incrementos nas métricas Prometheus
+
+### 2. Testes de integração (endpoints)
 
 > Requerem PostgreSQL + Redis rodando. Adicionar serviços ao CI antes de habilitar.
 
@@ -140,13 +154,17 @@
 - [ ] `queue_reports.py`
 - [ ] `queue_snapshots.py`
 
+### 3. Observabilidade — Grafana
+- [ ] Integração com Prometheus como datasource
+- [ ] Dashboards para monitoramento da API e métricas de negócio
+
+
 ---
 
 ## 🔭 Melhorias futuras (pós-MVP)
 
 ### Observabilidade
 - [ ] **structlog** — logs estruturados em JSON
-- [ ] **Prometheus + Grafana** — métricas via `prometheus-fastapi-instrumentator` (`/metrics`)
 
 ### Processamento assíncrono
 
@@ -203,4 +221,3 @@
 | Recálculo snapshot | Celery | Background Tasks FastAPI | Bridge para MVP |
 | Expiração `FOOD_ENDED` | TTL Redis | Janela implícita de 5 min | Sem Redis no MVP — evolui com Celery |
 | Broker Celery | Redis | RabbitMQ | Persistência, DLQ e visibilidade |
-

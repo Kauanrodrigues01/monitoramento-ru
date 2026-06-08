@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 
 from app.core.logging import get_logger
+from app.core.observability.helpers import track_rate_limit_blocked
 from app.exceptions.base import AppException
 
 logger = get_logger(__name__)
@@ -28,6 +29,16 @@ async def rate_limit_exceeded_handler(
     request: Request,
     exc: RateLimitExceeded,
 ) -> JSONResponse:
+    route = request.scope.get("route")
+
+    endpoint = route.path if route else "unknown"
+
+    track_rate_limit_blocked(
+        endpoint=endpoint,
+        method=request.method,
+        limit=exc.detail,
+    )
+
     response = JSONResponse(
         status_code=429,
         content={"detail": _RATE_LIMIT_DETAIL},

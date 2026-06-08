@@ -5,12 +5,12 @@ from app.core.settings import settings
 from .endpoints.metrics import router as metrics_router
 from .endpoints.queue_reports import router as queue_reports_router
 from .endpoints.queue_snapshots import router as queue_snapshots_router
-from .endpoints.websocket import router as websocket_router
 from .endpoints.restaurant_schedule_exceptions import (
     router as restaurant_schedule_exceptions_router,
 )
 from .endpoints.restaurant_schedules import router as restaurant_schedules_router
 from .endpoints.restaurants import router as restaurants_router
+from .endpoints.websocket import router as websocket_router
 
 api_router = APIRouter(prefix="/api/v1")
 

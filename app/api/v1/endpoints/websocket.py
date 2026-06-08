@@ -1,15 +1,12 @@
-from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from app.core.rate_limiter import limiter
-from app.core.rate_limits import WS_CONNECT_RATE_LIMIT
 from app.core.websocket_manager import manager
 
 router = APIRouter(prefix="/ws", tags=["WebSocket Endpoints"])
 
 
 @router.websocket("/snapshots")
-@limiter.limit(WS_CONNECT_RATE_LIMIT)
-async def snapshots_websocket(websocket: WebSocket, request: Request):
+async def snapshots_websocket(websocket: WebSocket):
     device_id: str | None = websocket.query_params.get("device_id")
     room = "snapshots"
 

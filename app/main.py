@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy import text
 
 from app.api.v1.router import api_router
 from app.core.exception_handlers import (
@@ -11,10 +12,13 @@ from app.core.exception_handlers import (
     rate_limit_exceeded_handler,
 )
 from app.core.logging import get_logger, setup_logging
+from app.core.observability.middleware import business_metrics_middleware
+from app.core.observability.prometheus import setup_prometheus
 from app.core.pubsub import start_pubsub_listener
 from app.core.rate_limiter import limiter
-from app.core.redis import close_redis
+from app.core.redis import close_redis, get_redis
 from app.core.settings import settings
+from app.dependencies.database import DBSessionDep
 from app.exceptions.base import AppException
 
 setup_logging()
@@ -76,6 +80,11 @@ app = FastAPI(
     openapi_tags=_TAGS_METADATA,
 )
 
+setup_prometheus(app)
+
+# =====================================
+# Middlewares
+# =====================================
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ALLOWED_ORIGINS,
@@ -83,10 +92,43 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PATCH"],
     allow_headers=["Content-Type", "X-Admin-Key", "X-Device-ID"],
 )
+app.middleware("http")(business_metrics_middleware)
 
+# =====================================
+# Rate Limiter
+# =====================================
 app.state.limiter = limiter
 
+# =====================================
+# Exception Handlers
+# =====================================
 app.add_exception_handler(AppException, app_exception_handler)
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
+# =====================================
+# Routers
+# =====================================
 app.include_router(api_router)
+
+
+@app.get(
+    "/health/live",
+    description="Endpoint que garante que a aplicação está rodando (liveness probe)",
+    tags=["Health"],
+)
+async def liveness() -> dict[str, str]:
+    return {"status": "alive"}
+
+
+@app.get(
+    "/health/ready",
+    description="Endpoint que verifica se a aplicação está pronta para receber requisições, verificando conexões com banco de dados e Redis (readiness probe)",
+    tags=["Health"],
+)
+async def readiness(db_session: DBSessionDep):
+    await db_session.execute(text("SELECT 1"))
+
+    redis = await get_redis()
+    await redis.ping()
+
+    return {"status": "ready"}

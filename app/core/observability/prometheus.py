@@ -8,13 +8,18 @@ def setup_prometheus(app: FastAPI) -> None:
         should_ignore_untemplated=True,
         should_respect_env_var=False,
         should_instrument_requests_inprogress=True,
+        # Adiciona label do método no in-progress também
+        inprogress_labels=True,
         excluded_handlers=[
             "/metrics",
             "/docs",
             "/redoc",
             "/openapi.json",
+            "/health",  # se tiver health check — evita poluir as métricas
+            "/health/ready",
+            "/health/live",
         ],
     )
 
     instrumentator.instrument(app)
-    instrumentator.expose(app)
+    instrumentator.expose(app, include_in_schema=False)  # esconde do OpenAPI

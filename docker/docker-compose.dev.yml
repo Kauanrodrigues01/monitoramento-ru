@@ -72,6 +72,8 @@ services:
       - "3000:3000"
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
 
   db:
     container_name: monitor-ru-db-dev

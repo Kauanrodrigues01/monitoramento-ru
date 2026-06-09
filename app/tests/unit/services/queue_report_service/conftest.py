@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -11,6 +11,12 @@ from app.services.snapshot_status_service import SnapshotStatusService
 from app.tests.factories.models.unit.restaurant_model_factory import RestaurantFactory
 from app.tests.factories.schemas.queue_report_schema_factory import (
     build_queue_report_create_schema,
+)
+from app.tests.unit.services.queue_report_service._base import (
+    _PATCH_OBSERVE_QUEUE_REPORT_CONFIDENCE_SCORE,
+    _PATCH_OBSERVE_QUEUE_REPORT_DISTANCE,
+    _PATCH_TRACK_QUEUE_REPORT_CREATED,
+    _PATCH_TRACK_QUEUE_REPORT_REJECTED,
 )
 
 from ._base import (
@@ -53,6 +59,50 @@ def mock_meal_period_service():
 @pytest.fixture
 def mock_snapshot_status_service():
     return AsyncMock(spec=SnapshotStatusService)
+
+
+@pytest.fixture(autouse=True)
+def mock_observability():
+    """
+    Mocka automaticamente todas as métricas de observabilidade
+    relacionadas ao QueueReportService.
+
+    Objetivos:
+    - Evitar que testes unitários alterem métricas reais do Prometheus.
+    - Impedir efeitos colaterais causados pela camada de observabilidade.
+    - Permitir validações específicas em testes que precisem verificar
+      se uma métrica foi chamada corretamente.
+
+    Como a fixture utiliza `autouse=True`, os patches são aplicados
+    automaticamente em todos os testes deste módulo sem necessidade
+    de declarar a fixture explicitamente.
+
+    Em testes que precisarem validar chamadas das métricas, basta
+    receber `mock_observability` como argumento e utilizar os mocks
+    retornados.
+
+    Exemplo:
+
+        async def test_should_track_metric(
+            mock_observability,
+        ):
+            ...
+
+            mock_observability["created"].assert_called_once()
+    """
+
+    with (
+        patch(_PATCH_TRACK_QUEUE_REPORT_CREATED) as created,
+        patch(_PATCH_TRACK_QUEUE_REPORT_REJECTED) as rejected,
+        patch(_PATCH_OBSERVE_QUEUE_REPORT_DISTANCE) as distance,
+        patch(_PATCH_OBSERVE_QUEUE_REPORT_CONFIDENCE_SCORE) as confidence,
+    ):
+        yield {
+            "created": created,
+            "rejected": rejected,
+            "distance": distance,
+            "confidence": confidence,
+        }
 
 
 @pytest.fixture

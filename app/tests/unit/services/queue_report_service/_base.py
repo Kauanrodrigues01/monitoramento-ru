@@ -21,6 +21,18 @@ _PATCH_SETTINGS = "app.services.queue_report_service.settings"
 _PATCH_RESTAURANT_SNAPSHOT_UPDATE_TASK = (
     "app.services.queue_report_service.update_restaurant_snapshot_status_task.delay"
 )
+_PATCH_TRACK_QUEUE_REPORT_CREATED = (
+    "app.services.queue_report_service.track_queue_report_created"
+)
+_PATCH_TRACK_QUEUE_REPORT_REJECTED = (
+    "app.services.queue_report_service.track_queue_report_rejected"
+)
+_PATCH_OBSERVE_QUEUE_REPORT_DISTANCE = (
+    "app.services.queue_report_service.observe_queue_report_distance"
+)
+_PATCH_OBSERVE_QUEUE_REPORT_CONFIDENCE_SCORE = (
+    "app.services.queue_report_service.observe_queue_report_confidence_score"
+)
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────

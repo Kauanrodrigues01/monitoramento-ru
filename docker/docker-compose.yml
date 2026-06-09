@@ -128,7 +128,32 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
 
+  prometheus:
+    container_name: monitor-ru-prometheus
+    image: prom/prometheus:v3.6.0
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+
+  grafana:
+    container_name: monitor-ru-grafana
+    image: grafana/grafana:12.2.0
+    restart: unless-stopped
+    depends_on:
+      prometheus:
+        condition: service_started
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+
 volumes:
   postgres_data:
   redis_data2:
   rabbitmq_data:
+  prometheus_data:
+  grafana_data:

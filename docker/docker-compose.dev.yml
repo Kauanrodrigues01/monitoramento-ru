@@ -17,12 +17,36 @@ services:
       LOG_ENV: development
       REDIS_URL: redis://redis:6379/0
       CORS_ALLOWED_ORIGINS: '["*"]'
+      CELERY_BROKER_URL: "amqp://admin:admin@rabbitmq:5672/"
     ports:
       - "8000:8000"
     volumes:
       - ../app:/app/app
+  
+
+  celery-worker:
+    container_name: monitor-ru-celery-worker-dev
+    image: monitor-ru-api:dev
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    restart: unless-stopped
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      LOG_ENV: development
+      REDIS_URL: redis://redis:6379/0
+      CORS_ALLOWED_ORIGINS: '["*"]'
+      CELERY_BROKER_URL: "amqp://admin:admin@rabbitmq:5672/"
+    command: celery -A app.celery worker --loglevel=info
+    volumes:
+      - ../app:/app/app
 
   prometheus:
+    container_name: monitor-ru-prometheus-dev
     image: prom/prometheus:v3.6.0
     restart: unless-stopped
     depends_on:
@@ -35,6 +59,7 @@ services:
       - prometheus_data:/prometheus
 
   grafana:
+    container_name: monitor-ru-grafana-dev
     image: grafana/grafana:12.2.0
     restart: unless-stopped
     depends_on:
@@ -88,9 +113,23 @@ services:
       timeout: 10s
       retries: 3
       start_period: 5s
+  
+  rabbitmq:
+    container_name: monitor-ru-rabbitmq-dev
+    image: rabbitmq:3.13-management-alpine
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=admin
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
 
 volumes:
   postgres_data:
   redis_data:
   grafana_data:
   prometheus_data:
+  rabbitmq_data:

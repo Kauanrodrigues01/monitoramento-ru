@@ -25,6 +25,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       DEBUG: "${DEBUG:-False}"
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS}"
+      CELERY_BROKER_URL: "amqp://${RABBITMQ_DEFAULT_USER:-admin}:${RABBITMQ_DEFAULT_PASS:-admin}@rabbitmq:5672/"
     healthcheck:
       test:
         [
@@ -40,6 +41,8 @@ services:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   db:
@@ -80,6 +83,22 @@ services:
       retries: 3
       start_period: 5s
 
+  rabbitmq:
+    container_name: monitor-ru-rabbitmq
+    image: rabbitmq:4.3-management-alpine
+    restart: unless-stopped
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER:-admin}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS:-admin}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
 volumes:
   postgres_data:
   redis_data2:
+  rabbitmq_data:

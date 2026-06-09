@@ -40,5 +40,7 @@ class Settings(BaseSettings):
 
     APP_TIMEZONE: str = "America/Fortaleza"
 
+    CELERY_BROKER_URL: str
+
 
 settings = Settings()

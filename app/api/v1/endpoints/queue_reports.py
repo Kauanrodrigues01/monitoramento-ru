@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Request
+from fastapi import APIRouter, Request
 
 from app.core.openapi_responses import (
     INTERNAL_SERVER_ERROR_RESPONSE,
@@ -35,7 +35,7 @@ router = APIRouter(prefix="/restaurants", tags=["Queue Reports"])
 @router.post(
     "/{restaurant_public_id}/reports",
     response_model=QueueReportResponse,
-    status_code=201,
+    status_code=202,
     responses=(
         error_response(RestaurantNotFoundError)
         | error_response(InvalidGeoSignatureException)
@@ -57,11 +57,10 @@ async def create_queue_report(
     service: QueueReportServiceDep,
     device_id: DeviceIdHeaderDep,
     request: Request,
-    background_tasks: BackgroundTasks,
 ):
     ip = IpService.get_client_ip(request)
     return await service.create_queue_report(
-        restaurant_public_id, queue_report_data, ip, device_id, background_tasks
+        restaurant_public_id, queue_report_data, ip, device_id
     )
 
 

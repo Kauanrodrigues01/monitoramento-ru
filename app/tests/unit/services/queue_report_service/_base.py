@@ -18,6 +18,9 @@ _PATCH_GEO_SIG = "app.services.queue_report_service.GeoSignatureService.validate
 _PATCH_HAVERSINE = "app.services.queue_report_service.GeoUtils.haversine_distance_m"
 _PATCH_CONFIDENCE = "app.services.queue_report_service.ConfidenceScoreService.calculate_confidence_score"
 _PATCH_SETTINGS = "app.services.queue_report_service.settings"
+_PATCH_RESTAURANT_SNAPSHOT_UPDATE_TASK = (
+    "app.services.queue_report_service.update_restaurant_snapshot_status_task.delay"
+)
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────

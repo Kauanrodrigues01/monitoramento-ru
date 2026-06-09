@@ -171,9 +171,10 @@
 > **Broker:** RabbitMQ em vez de Redis. Persistência de mensagens em disco, Dead Letter Queue nativa e Management UI em tempo real. Redis permanece exclusivo para cache.
 
 #### Infraestrutura
-- [ ] Serviço `rabbitmq` no Docker Compose (`rabbitmq:3-management`, porta 15672)
-- [ ] Celery com `broker_url = amqp://...` e `result_backend = redis://...`
-- [ ] Substituir Background Tasks por Celery task `update_snapshot_task(ru_id)` — `POST /reports` passa de `201` para `202 Accepted`
+- [x] Serviço `rabbitmq` no Docker Compose (`rabbitmq:3.13-management`, porta 15672)
+- [x] Celery com `broker_url = amqp://...` 
+- [x] Substituir Background Tasks por Celery task `update_snapshot_task(ru_id)` — `POST /reports` passa de `201` para `202 Accepted`
+- [x] Alterar testes unitarios necessarios apos a alteração para Celery (ex: `update_snapshot` → `update_snapshot_task.delay()`)
 - [ ] `sqlalchemy-celery-beat` — scheduler dinâmico com schedules no PostgreSQL
 
 #### `queue_aggregates_10m`

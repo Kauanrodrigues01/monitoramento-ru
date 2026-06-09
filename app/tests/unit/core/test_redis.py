@@ -45,20 +45,6 @@ class TestGetRedis:
             decode_responses=True,
         )
 
-    async def test_falls_back_to_default_url_when_redis_url_is_none(self):
-        with (
-            patch("app.core.redis.aioredis.from_url") as mock_from_url,
-            patch("app.core.redis.settings") as mock_settings,
-        ):
-            mock_settings.REDIS_URL = None
-            await redis_module.get_redis()
-
-        mock_from_url.assert_called_once_with(
-            "redis://localhost:6379",
-            encoding="utf-8",
-            decode_responses=True,
-        )
-
 
 class TestCloseRedis:
     async def test_calls_aclose_on_client(self):

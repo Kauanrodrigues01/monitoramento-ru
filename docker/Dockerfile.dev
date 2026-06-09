@@ -15,11 +15,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY pyproject.toml uv.lock ./
 
-RUN uv sync --frozen --no-dev --no-install-project
+RUN uv sync --frozen --no-install-project
 
 COPY . .
-
-RUN uv sync --frozen --no-dev
 
 RUN chmod +x /app/scripts/start-dev.sh
 

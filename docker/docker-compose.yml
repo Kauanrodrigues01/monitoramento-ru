@@ -44,6 +44,36 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+  
+  celery-worker:
+    container_name: monitor-ru-celery-worker
+    image: monitor-ru-api:latest
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: "${DB_USER:-postgres}"
+      DB_PASSWORD: "${DB_PASSWORD:-postgres}"
+      DB_NAME: "${DB_NAME:-mydb}"
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+      LOG_ENV: "${LOG_ENV:-production}"
+      ADMIN_API_KEY: "${ADMIN_API_KEY}"
+      APP_GEO_SECRET: "${APP_GEO_SECRET}"
+      GEO_SIGNATURE_MAX_SKEW_SECONDS: "${GEO_SIGNATURE_MAX_SKEW_SECONDS:-60}"
+      REDIS_URL: redis://redis:6379/0
+      DEBUG: "${DEBUG:-False}"
+      CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS}"
+      CELERY_BROKER_URL: "amqp://${RABBITMQ_DEFAULT_USER:-admin}:${RABBITMQ_DEFAULT_PASS:-admin}@rabbitmq:5672/"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    command: celery -A app.core.celery:celery_app worker -l INFO
 
   db:
     container_name: monitor-ru-db

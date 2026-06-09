@@ -141,7 +141,7 @@
 ## 🔲 Pendente — ordenado por prioridade
 
 ### 1. Observabilidade — Prometheus
-- [ ] Adicionar testes para os arquivos em app/core/observability
+- [x] Adicionar testes para os arquivos em app/core/observability
 - [ ] Atualizar testes de QueueReportService para verificar incrementos nas métricas Prometheus
 
 ### 2. Testes de integração (endpoints)

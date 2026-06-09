@@ -41,7 +41,10 @@ services:
       REDIS_URL: redis://redis:6379/0
       CORS_ALLOWED_ORIGINS: '["*"]'
       CELERY_BROKER_URL: "amqp://admin:admin@rabbitmq:5672/"
-    command: celery -A app.celery worker --loglevel=info
+    depends_on:
+      rabbitmq:
+        condition: service_started
+    command: celery -A app.core.celery:celery_app worker -l INFO
     volumes:
       - ../app:/app/app
 

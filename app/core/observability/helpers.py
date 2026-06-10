@@ -2,7 +2,6 @@ from decimal import Decimal
 from typing import Literal
 
 from app.core.observability.business_metrics import (
-    BUSINESS_REQUESTS_TOTAL,
     QUEUE_REPORT_DISTANCE_METERS,
     QUEUE_REPORTS_CONFIDENCE_SCORE,
     QUEUE_REPORTS_CREATED_TOTAL,
@@ -71,17 +70,4 @@ def track_rate_limit_blocked(
         endpoint=endpoint,
         method=method,
         limit=limit,
-    ).inc()
-
-
-def track_business_request(
-    *,
-    endpoint: str,
-    method: str,
-    status_code: int,
-) -> None:
-    BUSINESS_REQUESTS_TOTAL.labels(
-        endpoint=endpoint,
-        method=method,
-        status_code=str(status_code),
     ).inc()

@@ -7,7 +7,6 @@ from app.core.observability.business_metrics import QueueReportRejectReason
 from app.core.observability.helpers import (
     observe_queue_report_confidence_score,
     observe_queue_report_distance,
-    track_business_request,
     track_queue_report_created,
     track_queue_report_rejected,
     track_rate_limit_blocked,
@@ -18,7 +17,6 @@ _PATCH_REJECTED = "app.core.observability.helpers.QUEUE_REPORTS_REJECTED_TOTAL"
 _PATCH_CONFIDENCE = "app.core.observability.helpers.QUEUE_REPORTS_CONFIDENCE_SCORE"
 _PATCH_DISTANCE = "app.core.observability.helpers.QUEUE_REPORT_DISTANCE_METERS"
 _PATCH_RATE_LIMIT = "app.core.observability.helpers.RATE_LIMIT_BLOCKED_TOTAL"
-_PATCH_BUSINESS = "app.core.observability.helpers.BUSINESS_REQUESTS_TOTAL"
 
 
 def _make_metric_mock():
@@ -259,53 +257,6 @@ class TestTrackRateLimitBlocked:
                 endpoint="/api/v1/queue-reports",
                 method="POST",
                 limit="10/minute",
-            )
-
-        labeled.inc.assert_called_once()
-
-
-# ── TestTrackBusinessRequest ──────────────────────────────────────────────────
-
-
-class TestTrackBusinessRequest:
-    def test_calls_labels_with_correct_arguments(self):
-        metric, labeled = _make_metric_mock()
-
-        with patch(_PATCH_BUSINESS, metric):
-            track_business_request(
-                endpoint="/api/v1/restaurants",
-                method="GET",
-                status_code=200,
-            )
-
-        metric.labels.assert_called_once_with(
-            endpoint="/api/v1/restaurants",
-            method="GET",
-            status_code="200",
-        )
-
-    def test_status_code_is_stringified(self):
-        metric, _ = _make_metric_mock()
-
-        with patch(_PATCH_BUSINESS, metric):
-            track_business_request(
-                endpoint="/api/v1/restaurants",
-                method="POST",
-                status_code=201,
-            )
-
-        call_kwargs = metric.labels.call_args.kwargs
-        assert call_kwargs["status_code"] == "201"
-        assert isinstance(call_kwargs["status_code"], str)
-
-    def test_calls_inc(self):
-        metric, labeled = _make_metric_mock()
-
-        with patch(_PATCH_BUSINESS, metric):
-            track_business_request(
-                endpoint="/api/v1/restaurants",
-                method="GET",
-                status_code=404,
             )
 
         labeled.inc.assert_called_once()

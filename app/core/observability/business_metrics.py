@@ -86,13 +86,3 @@ RATE_LIMIT_BLOCKED_TOTAL = Counter(
     "Total de bloqueios por rate limit",
     ["endpoint", "method", "limit"],
 )
-
-BUSINESS_REQUESTS_TOTAL = Counter(
-    "business_requests_total",
-    "Total de requisições de negócio",
-    [
-        "endpoint",
-        "method",
-        "status_code",
-    ],
-)

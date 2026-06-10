@@ -153,9 +153,10 @@
 ### 1. Observabilidade — Prometheus (ajustes finais)
 
 - [ ] Atualizar testes de `QueueReportService` para verificar incrementos nas métricas Prometheus
-- [ ] Remover métrica `BUSINESS_REQUESTS_TOTAL` — helper, middleware e testes relacionados
+- [x] Remover métrica `BUSINESS_REQUESTS_TOTAL` — helper, middleware e testes relacionados
   > **Justificativa:** `http_requests_total` do instrumentor já cobre os endpoints de negócio com filtragem por handler, tornando a métrica personalizada redundante. A única diferença era excluir o WebSocket, mas esse já foi removido do instrumentor — resolvendo o problema na origem.
-- [ ] Remover endpoint WebSocket do instrumentor (evitar poluir métricas HTTP com conexões WS)
+- [x] Remover endpoint WebSocket do instrumentor (evitar poluir métricas HTTP com conexões WS)
+- [x] Melhorar exlcuded paths do instrumentor usando regex
 - [ ] Documentar o instrumentor: endpoints excluídos, parâmetros e decisões de configuração
 - [x] Adicionar Node Exporter para métricas do host (CPU, memória, disco, rede)
 

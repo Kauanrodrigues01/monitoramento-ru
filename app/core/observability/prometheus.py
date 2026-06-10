@@ -11,15 +11,13 @@ def setup_prometheus(app: FastAPI) -> None:
         # Adiciona label do método no in-progress também
         inprogress_labels=True,
         excluded_handlers=[
-            "/metrics",
-            "/docs",
-            "/redoc",
-            "/openapi.json",
-            "/health",  # se tiver health check — evita poluir as métricas
-            "/health/ready",
-            "/health/live",
-            "/ws",
-            "/api/v1/ws/snapshots",
+            r"^/metrics$",
+            r"^/docs$",
+            r"^/redoc$",
+            r"^/openapi\.json$",
+            r"^/health.*",
+            r"^.*/debug.*",
+            r"^.*/ws.*",
         ],
     )
 

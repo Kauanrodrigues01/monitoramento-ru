@@ -12,7 +12,6 @@ from app.core.exception_handlers import (
     rate_limit_exceeded_handler,
 )
 from app.core.logging import get_logger, setup_logging
-from app.core.observability.middleware import business_metrics_middleware
 from app.core.observability.prometheus import setup_prometheus
 from app.core.pubsub import start_pubsub_listener
 from app.core.rate_limiter import limiter
@@ -92,7 +91,6 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PATCH"],
     allow_headers=["Content-Type", "X-Admin-Key", "X-Device-ID"],
 )
-app.middleware("http")(business_metrics_middleware)
 
 # =====================================
 # Rate Limiter

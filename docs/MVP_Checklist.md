@@ -33,7 +33,7 @@
   - [x] Verificação de horário de funcionamento (exceptions → schedules)
   - [x] Geofence (distância vs `geofence_radius_m` do restaurant)
 - [x] Campos inferidos pelo servidor: `meal_period`, `ip_hash`, `device_hash`, `confidence_score`
-- [x] Retorna `202 Accepted` (Celery task `update_snapshot_task.delay()`)
+- [x] Retorna `202 Accepted` (Celery task `update_restaurant_snapshot_status_task.delay()`)
 - [x] Endpoint `GET /v1/restaurants/{public_id}/reports/recent` — últimos 20 relatos do período vigente; response: `public_id`, `status`, `meal_period`, `created_at`
 - [x] Testes de schemas e services
 
@@ -48,24 +48,24 @@
 
 ### Rate Limit (slowapi — `app/core/rate_limits.py`)
 - [x] Aplicado a todos os endpoints
-- [x] Chave efetiva: `X-Device-ID` → IP → `"anonymous"` (`app/core/rate_limiter.py`)
+- [x] Chave efetiva: `X-Device-ID` (enviado pelo client) → IP → `"anonymous"` (`app/core/rate_limiter.py`)
 
 | Endpoint | Limite | Chave |
 |---|---|---|
-| `POST /restaurants` | 10 req/min | IP |
-| `GET /restaurants` | 60 req/min | IP |
-| `GET /restaurants/{id}` | 60 req/min | IP |
-| `PATCH /restaurants/{id}` | 10 req/min | IP |
-| `POST /restaurants/{id}/schedules` | 20 req/min | IP |
-| `GET /restaurants/{id}/schedules` | 60 req/min | IP |
-| `PATCH /restaurants/{id}/schedules/{sid}` | 20 req/min | IP |
-| `POST /restaurants/{id}/schedule-exceptions` | 5 req/min | IP |
-| `GET /restaurants/{id}/schedule-exceptions` | 60 req/min | IP |
-| `PATCH /restaurants/{id}/schedule-exceptions/{eid}` | 10 req/min | IP |
+| `POST /restaurants` | 10 req/min | X-Device-ID (prioridade) |
+| `GET /restaurants` | 60 req/min | X-Device-ID (prioridade) |
+| `GET /restaurants/{id}` | 60 req/min | X-Device-ID (prioridade) |
+| `PATCH /restaurants/{id}` | 10 req/min | X-Device-ID (prioridade) |
+| `POST /restaurants/{id}/schedules` | 20 req/min | X-Device-ID (prioridade) |
+| `GET /restaurants/{id}/schedules` | 60 req/min | X-Device-ID (prioridade) |
+| `PATCH /restaurants/{id}/schedules/{sid}` | 20 req/min | X-Device-ID (prioridade) |
+| `POST /restaurants/{id}/schedule-exceptions` | 5 req/min | X-Device-ID (prioridade) |
+| `GET /restaurants/{id}/schedule-exceptions` | 60 req/min | X-Device-ID (prioridade) |
+| `PATCH /restaurants/{id}/schedule-exceptions/{eid}` | 10 req/min | X-Device-ID (prioridade) |
 | `POST /restaurants/{id}/reports` | 20 req/min (DoS bruto; cooldown real no service) | `X-Device-ID` |
-| `GET /restaurants/{id}/reports/recent` | 60 req/min | IP |
-| `GET /restaurants/status/bulk` | 20 req/min | IP |
-| `GET /restaurants/{id}/status` | 60 req/min | IP |
+| `GET /restaurants/{id}/reports/recent` | 60 req/min | X-Device-ID (prioridade) |
+| `GET /restaurants/status/bulk` | 20 req/min | X-Device-ID (prioridade) |
+| `GET /restaurants/{id}/status` | 60 req/min | X-Device-ID (prioridade) |
 
 ### Queue Snapshots
 - [x] Model `queue_snapshot` com `avg_status_value: Mapped[Decimal | None]` (`Numeric(3,2)`, nullable)
@@ -83,7 +83,7 @@
 - [x] `FOOD_ENDED` com quórum separado: ≥3 relatos em 5 min sobrescreve o cálculo normal
 - [x] `_compute_status` retorna `tuple[SnapshotStatusEnum, Decimal, Decimal | None]` — terceiro elemento é `avg_status_value`; `None` em `NO_DATA` e `FOOD_ENDED`
 - [x] `confidence_score` e `avg_status_value` persistidos no snapshot após cada recálculo
-- [x] Atualização assíncrona via Celery task `update_snapshot_task`
+- [x] Atualização assíncrona via Celery task `update_restaurant_snapshot_status_task`
 - [x] Testes do `SnapshotStatusService`
 
 ### WebSocket — status em tempo real
@@ -113,17 +113,24 @@
 - [x] Health checks: `GET /health/live`, `GET /health/ready`
 - [x] Testes para `app/core/observability`
 - [x] Ambiente de desenvolvimento com Grafana via Docker Compose
+- [x] Remover métrica `BUSINESS_REQUESTS_TOTAL` — helper, middleware e testes relacionados
+  > **Justificativa:** `http_requests_total` do instrumentor já cobre os endpoints de negócio com filtragem por handler, tornando a métrica personalizada redundante. A única diferença era excluir o WebSocket, mas esse já foi removido do instrumentor — resolvendo o problema na origem.
+- [x] Remover endpoint WebSocket do instrumentor (evitar poluir métricas HTTP com conexões WS)
+- [x] Melhorar exlcuded paths do instrumentor usando regex
+- [x] Documentar o instrumentor: endpoints excluídos, parâmetros e decisões de configuração
+- [x] Adicionar Node Exporter para métricas do host (CPU, memória, disco, rede)
 
 ### Observabilidade — Grafana
 - [x] Integração com Prometheus como datasource
 - [x] Dashboard `HTTP Overview` — monitoramento geral da API (latência, taxa de erros, throughput)
 - [x] Documentação do dashboard `HTTP Overview` e queries PromQL
+- [x] Dashboard `Infrastructure` — CPU, memória, disco e rede do host (com Node Exporter)
 
 ### Processamento assíncrono — Celery + RabbitMQ
 - [x] Serviço `rabbitmq` no Docker Compose (`rabbitmq:3.13-management`, porta 15672)
 - [x] Celery configurado com `broker_url = amqp://...`
-- [x] `update_snapshot_task(ru_id)` — substitui Background Tasks do FastAPI; `POST /reports` retorna `202 Accepted`
-- [x] Testes unitários atualizados (`update_snapshot` → `update_snapshot_task.delay()`)
+- [x] `update_restaurant_snapshot_status_task(ru_id)` — substitui Background Tasks do FastAPI; `POST /reports` retorna `202 Accepted`
+- [x] Testes unitários atualizados (`update_snapshot` → `update_restaurant_snapshot_status_task.delay()`)
 
 ### Refactoring
 - [x] Extraído `_get_restaurant_by_public_id_or_error` — centralizado em `app/services/_utils.py`
@@ -153,12 +160,7 @@
 ### 1. Observabilidade — Prometheus (ajustes finais)
 
 - [ ] Atualizar testes de `QueueReportService` para verificar incrementos nas métricas Prometheus
-- [x] Remover métrica `BUSINESS_REQUESTS_TOTAL` — helper, middleware e testes relacionados
-  > **Justificativa:** `http_requests_total` do instrumentor já cobre os endpoints de negócio com filtragem por handler, tornando a métrica personalizada redundante. A única diferença era excluir o WebSocket, mas esse já foi removido do instrumentor — resolvendo o problema na origem.
-- [x] Remover endpoint WebSocket do instrumentor (evitar poluir métricas HTTP com conexões WS)
-- [x] Melhorar exlcuded paths do instrumentor usando regex
-- [ ] Documentar o instrumentor: endpoints excluídos, parâmetros e decisões de configuração
-- [x] Adicionar Node Exporter para métricas do host (CPU, memória, disco, rede)
+- [ ] Documentar métricas customizadas: `queue_reports_created_total`, `queue_reports_rejected_total`, `queue_reports_confidence_score`, `queue_report_distance_meters`, `rate_limit_blocked_total` — descrição, labels e exemplos de uso em queries PromQL
 
 ### 2. Observabilidade — Grafana (dashboards pendentes)
 
@@ -168,7 +170,6 @@
 - [ ] Documentar dashboard `WebSocket` e queries PromQL
 - [ ] Dashboard `Application & Process Health` — CPU, memória e file descriptors do processo Python
 - [ ] Documentar dashboard `Application & Process Health` e queries PromQL
-- [x] Dashboard `Infrastructure` — CPU, memória, disco e rede do host (com Node Exporter)
 - [ ] Documentar dashboard `Infrastructure` e queries PromQL
 - [ ] Configurar alertas para anomalias (latência, taxa de erros, CPU, queda de status)
 - [ ] Documentar alertas e queries PromQL
@@ -183,6 +184,20 @@
 - [ ] `queue_reports.py`
 - [ ] `queue_snapshots.py`
 
+
+### 4. Testes de integração (WebSocket)
+- [ ] Conexão e autenticação
+- [ ] Recebimento de eventos `SnapshotUpdatedEvent` após relatos e recálculos
+- [ ] Limite de uma conexão ativa por `device_id`
+- [ ] e etc...
+
+### 5. Processamento assíncrono
+
+#### Celery Beat dinâmico
+- [ ] `sqlalchemy-celery-beat` — scheduler com schedules persistidos no PostgreSQL
+- [ ] **`sync_scheduled_tasks`** — no startup e a cada alteração de schedules: cria/atualiza `PeriodicTask` com `ClockedSchedule` para o `closes_at` de cada slot
+- [ ] task `update_all_restaurant_snapshots` — executada a cada 5 min dentro do horario de funcionamento de cada RU; enfileira `update_restaurant_snapshot_status_task` para cada RU ativo, por isso a importante de `sync_scheduled_tasks` e `sqlalchemy-celery-beat` para manter os schedules do Celery Beat atualizados. Garantir que exceções de horário (schedule exceptions) sejam consideradas no horário de funcionamento. Quando RU tiver fechado não deve chamar `update_restaurant_snapshot_status_task` para evitar processamento desnecessário
+
 ---
 
 ## 🔭 Melhorias futuras (pós-MVP)
@@ -192,9 +207,7 @@
 
 ### Processamento assíncrono — fase 2
 
-#### Celery Beat dinâmico
-- [ ] `sqlalchemy-celery-beat` — scheduler com schedules persistidos no PostgreSQL
-- [ ] **`sync_scheduled_tasks`** — no startup e a cada alteração de schedules: cria/atualiza `PeriodicTask` com `ClockedSchedule` para o `closes_at` de cada slot
+
 
 #### `queue_aggregates_10m`
 - [ ] Model: `ru_id`, `meal_period`, `weekday`, `bucket_start`, `bucket_end`, `avg_status`, `avg_confidence`, `report_count`, `food_ended_count`

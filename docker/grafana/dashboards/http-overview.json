@@ -18,6 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
+  "id": 1,
   "links": [],
   "panels": [
     {
@@ -429,7 +430,8 @@
               "viz": false
             }
           },
-          "mappings": []
+          "mappings": [],
+          "unit": "percent"
         },
         "overrides": []
       },
@@ -465,7 +467,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum by (method) (increase(http_requests_total[$__range]))",
+          "expr": "100 *\nsum by (method) (\n  increase(http_requests_total[$__range])\n)\n/\non()\ngroup_left\nsum (\n  increase(http_requests_total[$__range])\n)",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -513,10 +515,6 @@
               {
                 "color": "green",
                 "value": 0
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
@@ -558,9 +556,10 @@
         {
           "editorMode": "code",
           "exemplar": false,
-          "expr": "topk(10,\n  sum by (handler) (\n    increase(http_requests_total[$__range])\n  )\n)",
+          "expr": "topk(10,\n  sum by (handler, method) (\n    increase(http_requests_total[$__range])\n  )\n)",
+          "hide": false,
           "instant": true,
-          "legendFormat": "__auto",
+          "legendFormat": "{{method}} {{handler}}",
           "range": false,
           "refId": "A"
         }
@@ -1879,5 +1878,5 @@
   "timezone": "browser",
   "title": "HTTP Overview",
   "uid": "ad75qf9",
-  "version": 69
+  "version": 2
 }

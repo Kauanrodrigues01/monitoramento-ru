@@ -220,7 +220,16 @@ sum by (method) (rate(http_requests_total[5m]))
 
 **Query:**
 ```promql
-sum by (method) (increase(http_requests_total[$__range]))
+100 *
+sum by (method) (
+  increase(http_requests_total[$__range])
+)
+/
+on()
+group_left
+sum (
+  increase(http_requests_total[$__range])
+)
 ```
 
 **Observação:** usa `$__range` para se ajustar automaticamente ao período selecionado no time picker — se você estiver visualizando as últimas 6 horas, o pie mostra a distribuição dessas 6 horas.
@@ -229,6 +238,7 @@ sum by (method) (increase(http_requests_total[$__range]))
 - Tipo: Donut
 - Legenda: exibe valor e percentual
 - Ordenação: decrescente
+- Unit: percent
 
 ---
 
@@ -241,7 +251,7 @@ sum by (method) (increase(http_requests_total[$__range]))
 **Query:**
 ```promql
 topk(10,
-  sum by (handler) (
+  sum by (handler, method) (
     increase(http_requests_total[$__range])
   )
 )
@@ -251,6 +261,7 @@ topk(10,
 - Orientação: horizontal (nomes de endpoints costumam ser longos)
 - Unidade: `short`
 - Query mode: instant (foto do momento, não série temporal)
+- Legend: {{method}} {{handler}} — exibe método e endpoint na legenda
 
 ---
 

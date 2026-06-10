@@ -128,6 +128,25 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
 
+  node-exporter:
+    image: prom/node-exporter:v1.11.1
+    container_name: monitor-ru-node-exporter
+    restart: unless-stopped
+
+    network_mode: host
+    pid: host
+
+    command:
+      - '--path.rootfs=/host'
+
+    volumes:
+      - '/:/host:ro,rslave'
+
+    read_only: true
+
+    security_opt:
+      - no-new-privileges:true
+
   prometheus:
     container_name: monitor-ru-prometheus
     image: prom/prometheus:v3.6.0
@@ -138,6 +157,8 @@ services:
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   grafana:
     container_name: monitor-ru-grafana

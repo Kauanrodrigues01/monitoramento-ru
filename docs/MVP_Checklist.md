@@ -157,7 +157,7 @@
   > **Justificativa:** `http_requests_total` do instrumentor já cobre os endpoints de negócio com filtragem por handler, tornando a métrica personalizada redundante. A única diferença era excluir o WebSocket, mas esse já foi removido do instrumentor — resolvendo o problema na origem.
 - [ ] Remover endpoint WebSocket do instrumentor (evitar poluir métricas HTTP com conexões WS)
 - [ ] Documentar o instrumentor: endpoints excluídos, parâmetros e decisões de configuração
-- [ ] Adicionar Node Exporter para métricas do host (CPU, memória, disco, rede)
+- [x] Adicionar Node Exporter para métricas do host (CPU, memória, disco, rede)
 
 ### 2. Observabilidade — Grafana (dashboards pendentes)
 
@@ -167,7 +167,7 @@
 - [ ] Documentar dashboard `WebSocket` e queries PromQL
 - [ ] Dashboard `Application & Process Health` — CPU, memória e file descriptors do processo Python
 - [ ] Documentar dashboard `Application & Process Health` e queries PromQL
-- [ ] Dashboard `Infrastructure` — CPU, memória, disco e rede do host (com Node Exporter)
+- [x] Dashboard `Infrastructure` — CPU, memória, disco e rede do host (com Node Exporter)
 - [ ] Documentar dashboard `Infrastructure` e queries PromQL
 - [ ] Configurar alertas para anomalias (latência, taxa de erros, CPU, queda de status)
 - [ ] Documentar alertas e queries PromQL

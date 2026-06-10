@@ -48,33 +48,6 @@ services:
     volumes:
       - ../app:/app/app
 
-  prometheus:
-    container_name: monitor-ru-prometheus-dev
-    image: prom/prometheus:v3.6.0
-    restart: unless-stopped
-    depends_on:
-      api:
-        condition: service_started
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-
-  grafana:
-    container_name: monitor-ru-grafana-dev
-    image: grafana/grafana:12.2.0
-    restart: unless-stopped
-    depends_on:
-      prometheus:
-        condition: service_started
-    ports:
-      - "3000:3000"
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning
-      - ./grafana/dashboards:/var/lib/grafana/dashboards
-
   db:
     container_name: monitor-ru-db-dev
     image: postgres:17.2-alpine
@@ -132,9 +105,49 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
 
+  node-exporter:
+    image: prom/node-exporter:v1.11.1
+    container_name: monitor-ru-node-exporter-dev
+    command:
+      - '--path.rootfs=/host'
+    network_mode: host
+    pid: host
+    restart: unless-stopped
+    volumes:
+      - '/:/host:ro,rslave'
+
+  prometheus:
+    container_name: monitor-ru-prometheus-dev
+    image: prom/prometheus:v3.6.0
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
+
+  grafana:
+    container_name: monitor-ru-grafana-dev
+    image: grafana/grafana:12.2.0
+    restart: unless-stopped
+    depends_on:
+      prometheus:
+        condition: service_started
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+
 volumes:
   postgres_data:
   redis_data:
+  rabbitmq_data:
   grafana_data:
   prometheus_data:
-  rabbitmq_data:

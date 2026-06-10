@@ -33,7 +33,7 @@
   - [x] Verificação de horário de funcionamento (exceptions → schedules)
   - [x] Geofence (distância vs `geofence_radius_m` do restaurant)
 - [x] Campos inferidos pelo servidor: `meal_period`, `ip_hash`, `device_hash`, `confidence_score`
-- [x] Retorna `201` (sem async — evolui para `202` com Celery)
+- [x] Retorna `202 Accepted` (Celery task `update_snapshot_task.delay()`)
 - [x] Endpoint `GET /v1/restaurants/{public_id}/reports/recent` — últimos 20 relatos do período vigente; response: `public_id`, `status`, `meal_period`, `created_at`
 - [x] Testes de schemas e services
 
@@ -83,7 +83,7 @@
 - [x] `FOOD_ENDED` com quórum separado: ≥3 relatos em 5 min sobrescreve o cálculo normal
 - [x] `_compute_status` retorna `tuple[SnapshotStatusEnum, Decimal, Decimal | None]` — terceiro elemento é `avg_status_value`; `None` em `NO_DATA` e `FOOD_ENDED`
 - [x] `confidence_score` e `avg_status_value` persistidos no snapshot após cada recálculo
-- [x] Atualização assíncrona via Background Tasks do FastAPI *(evolui para Celery task depois)*
+- [x] Atualização assíncrona via Celery task `update_snapshot_task`
 - [x] Testes do `SnapshotStatusService`
 
 ### WebSocket — status em tempo real
@@ -106,14 +106,24 @@
 - [x] Testes
 
 ### Observabilidade — Prometheus
-- [x] Métricas HTTP automáticas via `prometheus-fastapi-instrumentator`
-- [x] Endpoint `/metrics`
+- [x] Métricas HTTP automáticas via `prometheus-fastapi-instrumentator` (WebSocket excluído do instrumentor — monitorado via métricas customizadas)
+- [x] Endpoint `GET /metrics`
 - [x] Métricas customizadas de reports: `queue_reports_created_total`, `queue_reports_rejected_total`, `queue_reports_confidence_score`, `queue_report_distance_meters`
-- [x] Métricas de negócio: `business_requests_total`, `rate_limit_blocked_total`
-- [x] Instrumentação das metricas no `QueueReportService` e `SlowAPI` (via exception handler de `RateLimitExceeded`)
-- [x] Middleware para instrumentação da metrica `business_requests_total` que pega apenas os endpoints de negócio usando as tags dos routers e exclui `/metrics`, WebSockets, debug, health checks e etc...
+- [x] Métricas de rate limit: `rate_limit_blocked_total` (via exception handler de `RateLimitExceeded`)
 - [x] Health checks: `GET /health/live`, `GET /health/ready`
+- [x] Testes para `app/core/observability`
 - [x] Ambiente de desenvolvimento com Grafana via Docker Compose
+
+### Observabilidade — Grafana
+- [x] Integração com Prometheus como datasource
+- [x] Dashboard `HTTP Overview` — monitoramento geral da API (latência, taxa de erros, throughput)
+- [x] Documentação do dashboard `HTTP Overview` e queries PromQL
+
+### Processamento assíncrono — Celery + RabbitMQ
+- [x] Serviço `rabbitmq` no Docker Compose (`rabbitmq:3.13-management`, porta 15672)
+- [x] Celery configurado com `broker_url = amqp://...`
+- [x] `update_snapshot_task(ru_id)` — substitui Background Tasks do FastAPI; `POST /reports` retorna `202 Accepted`
+- [x] Testes unitários atualizados (`update_snapshot` → `update_snapshot_task.delay()`)
 
 ### Refactoring
 - [x] Extraído `_get_restaurant_by_public_id_or_error` — centralizado em `app/services/_utils.py`
@@ -140,24 +150,37 @@
 
 ## 🔲 Pendente — ordenado por prioridade
 
-### 1. Observabilidade — Prometheus
-- [x] Adicionar testes para os arquivos em app/core/observability
-- [ ] Atualizar testes de QueueReportService para verificar incrementos nas métricas Prometheus
+### 1. Observabilidade — Prometheus (ajustes finais)
 
-### 2. Testes de integração (endpoints)
+- [ ] Atualizar testes de `QueueReportService` para verificar incrementos nas métricas Prometheus
+- [ ] Remover métrica `BUSINESS_REQUESTS_TOTAL` — helper, middleware e testes relacionados
+  > **Justificativa:** `http_requests_total` do instrumentor já cobre os endpoints de negócio com filtragem por handler, tornando a métrica personalizada redundante. A única diferença era excluir o WebSocket, mas esse já foi removido do instrumentor — resolvendo o problema na origem.
+- [ ] Remover endpoint WebSocket do instrumentor (evitar poluir métricas HTTP com conexões WS)
+- [ ] Documentar o instrumentor: endpoints excluídos, parâmetros e decisões de configuração
+- [ ] Adicionar Node Exporter para métricas do host (CPU, memória, disco, rede)
 
-> Requerem PostgreSQL + Redis rodando. Adicionar serviços ao CI antes de habilitar.
+### 2. Observabilidade — Grafana (dashboards pendentes)
+
+- [ ] Dashboard `Business Metrics` — relatos por RU, distribuição de status, confiança média
+- [ ] Documentar dashboard `Business Metrics` e queries PromQL
+- [ ] Dashboard `WebSocket` — conexões ativas, eventos por segundo, desconexões
+- [ ] Documentar dashboard `WebSocket` e queries PromQL
+- [ ] Dashboard `Application & Process Health` — CPU, memória e file descriptors do processo Python
+- [ ] Documentar dashboard `Application & Process Health` e queries PromQL
+- [ ] Dashboard `Infrastructure` — CPU, memória, disco e rede do host (com Node Exporter)
+- [ ] Documentar dashboard `Infrastructure` e queries PromQL
+- [ ] Configurar alertas para anomalias (latência, taxa de erros, CPU, queda de status)
+- [ ] Documentar alertas e queries PromQL
+
+### 3. Testes de integração (endpoints)
+
+> Requerem PostgreSQL + Redis + RabbitMQ rodando. Adicionar serviços ao CI antes de habilitar.
 
 - [ ] `restaurants.py`
 - [ ] `restaurant_schedules.py`
 - [ ] `restaurant_schedule_exceptions.py`
 - [ ] `queue_reports.py`
 - [ ] `queue_snapshots.py`
-
-### 3. Observabilidade — Grafana
-- [ ] Integração com Prometheus como datasource
-- [ ] Dashboards para monitoramento da API e métricas de negócio
-
 
 ---
 
@@ -166,16 +189,11 @@
 ### Observabilidade
 - [ ] **structlog** — logs estruturados em JSON
 
-### Processamento assíncrono
+### Processamento assíncrono — fase 2
 
-> **Broker:** RabbitMQ em vez de Redis. Persistência de mensagens em disco, Dead Letter Queue nativa e Management UI em tempo real. Redis permanece exclusivo para cache.
-
-#### Infraestrutura
-- [x] Serviço `rabbitmq` no Docker Compose (`rabbitmq:3.13-management`, porta 15672)
-- [x] Celery com `broker_url = amqp://...` 
-- [x] Substituir Background Tasks por Celery task `update_snapshot_task(ru_id)` — `POST /reports` passa de `201` para `202 Accepted`
-- [x] Alterar testes unitarios necessarios apos a alteração para Celery (ex: `update_snapshot` → `update_snapshot_task.delay()`)
-- [ ] `sqlalchemy-celery-beat` — scheduler dinâmico com schedules no PostgreSQL
+#### Celery Beat dinâmico
+- [ ] `sqlalchemy-celery-beat` — scheduler com schedules persistidos no PostgreSQL
+- [ ] **`sync_scheduled_tasks`** — no startup e a cada alteração de schedules: cria/atualiza `PeriodicTask` com `ClockedSchedule` para o `closes_at` de cada slot
 
 #### `queue_aggregates_10m`
 - [ ] Model: `ru_id`, `meal_period`, `weekday`, `bucket_start`, `bucket_end`, `avg_status`, `avg_confidence`, `report_count`, `food_ended_count`
@@ -187,11 +205,10 @@
 - [ ] Schemas para endpoint de previsão
 - [ ] Testes do model e repository
 
-#### Tasks
+#### Tasks de encerramento de período
 - [ ] **`close_meal_period_task`** — ao atingir `closes_at`: enfileira `aggregate_meal_period_task` se houve relatos; reseta snapshot para `NO_DATA`; invalida cache Redis; publica `RU_CLOSED` via WebSocket
 - [ ] **`aggregate_meal_period_task`** — processa relatos do período em buckets fixos de 10 min; UPSERT em `queue_aggregates_10m`
 - [ ] **`FOOD_ENDED` override via Redis** — TTL explícito `min(30 min, tempo até closes_at)` em vez de remoção implícita por janela
-- [ ] **`sync_scheduled_tasks`** — no startup e a cada alteração de schedules: cria/atualiza `PeriodicTask` com `ClockedSchedule` para o `closes_at` de cada slot
 - [ ] Testes das tasks
 
 #### Jobs periódicos
@@ -215,10 +232,10 @@
 | Item | Escopo | Implementado | Justificativa |
 |---|---|---|---|
 | Status HMAC inválido | 401 | 400 | Validação de payload, não autenticação |
-| Status criação report | 202 | 201 | Sem async no MVP — evolui para 202 com Celery |
+| Status criação report | 202 | 201 → 202 | Migrado para 202 com Celery |
 | Chave de cooldown | IP | `device_hash` | Resolve NAT em redes compartilhadas |
 | Penalidade lat/lng redondo | −0.15 | −0.25 | Escopo atualizado |
 | `geo_sig_valid` | Campo no banco | Removido | Invariante — sempre `true` |
-| Recálculo snapshot | Celery | Background Tasks FastAPI | Bridge para MVP |
-| Expiração `FOOD_ENDED` | TTL Redis | Janela implícita de 5 min | Sem Redis no MVP — evolui com Celery |
+| Recálculo snapshot | Background Tasks | Celery task | Migrado — retry, visibilidade e DLQ |
+| Expiração `FOOD_ENDED` | TTL Redis | Janela implícita de 5 min | Evolui com tasks de encerramento de período |
 | Broker Celery | Redis | RabbitMQ | Persistência, DLQ e visibilidade |

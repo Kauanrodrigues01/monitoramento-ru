@@ -995,7 +995,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "(\n  sum(rate(http_request_duration_highr_seconds_bucket{le=\"0.25\"}[5m]))\n  +\n  sum(rate(http_request_duration_highr_seconds_bucket{le=\"0.5\"}[5m]))\n) / 2\n/\nsum(rate(http_request_duration_highr_seconds_count[5m]))",
+          "expr": "(\n  sum(rate(http_request_duration_highr_seconds_bucket{le=\"0.25\"}[5m]))\n  +\n  (\n    sum(rate(http_request_duration_highr_seconds_bucket{le=\"1.0\"}[5m]))\n    -\n    sum(rate(http_request_duration_highr_seconds_bucket{le=\"0.25\"}[5m]))\n  ) / 2\n)\n/\nsum(rate(http_request_duration_highr_seconds_count[5m]))",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"

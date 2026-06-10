@@ -18,6 +18,8 @@ def setup_prometheus(app: FastAPI) -> None:
             "/health",  # se tiver health check — evita poluir as métricas
             "/health/ready",
             "/health/live",
+            "/ws",
+            "/api/v1/ws/snapshots",
         ],
     )
 

@@ -86,10 +86,10 @@ topk(10, sum by (handler) (increase(http_requests_total{handler=~"$handler"}[$__
 
 ```promql
 -- Antes
-histogram_quantile(0.95, sum by (handler, le) (rate(http_request_duration_seconds_bucket[5m])))
+histogram_quantile(0.95, sum by (handler, le) (rate(http_request_duration_highr_seconds_bucket[5m])))
 
 -- Depois
-histogram_quantile(0.95, sum by (handler, le) (rate(http_request_duration_seconds_bucket{handler=~"$handler"}[5m])))
+histogram_quantile(0.95, sum by (handler, le) (rate(http_request_duration_highr_seconds_bucket{handler=~"$handler"}[5m])))
 ```
 
 **Por que usar `=~` e não `=`:** com multi-valor ativado, o Grafana gera um valor como `endpoint_a|endpoint_b|endpoint_c`, que é interpretado como expressão regular. Usar `=` causaria erro quando mais de um endpoint estiver selecionado.
@@ -172,7 +172,7 @@ sum(rate(http_requests_total[5m]))
 ```promql
 histogram_quantile(0.95,
   sum by (le) (
-    rate(http_request_duration_seconds_bucket[5m])
+    rate(http_request_duration_highr_seconds_bucket[5m])
   )
 )
 ```
@@ -328,12 +328,16 @@ sum by (handler, method, status) (
 **Query:**
 ```promql
 (
-  sum(rate(http_request_duration_seconds_bucket{le="0.2"}[5m]))
+  sum(rate(http_request_duration_highr_seconds_bucket{le="0.25"}[5m]))
   +
-  sum(rate(http_request_duration_seconds_bucket{le="0.5"}[5m]))
-) / 2
+  (
+    sum(rate(http_request_duration_highr_seconds_bucket{le="1.0"}[5m]))
+    -
+    sum(rate(http_request_duration_highr_seconds_bucket{le="0.25"}[5m]))
+  ) / 2
+)
 /
-sum(rate(http_request_duration_seconds_count[5m]))
+sum(rate(http_request_duration_highr_seconds_count[5m]))
 ```
 
 **Interpretação:**
@@ -366,13 +370,13 @@ Dois painéis para análise detalhada do tempo de resposta da API.
 **Queries:**
 ```promql
 -- P50: metade das requisições responderam abaixo desse tempo
-histogram_quantile(0.50, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))
+histogram_quantile(0.50, sum by (le) (rate(http_request_duration_highr_seconds_bucket[5m])))
 
 -- P95: 95% das requisições responderam abaixo desse tempo
-histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))
+histogram_quantile(0.95, sum by (le) (rate(http_request_duration_highr_seconds_bucket[5m])))
 
 -- P99: 99% das requisições responderam abaixo desse tempo
-histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[5m])))
+histogram_quantile(0.99, sum by (le) (rate(http_request_duration_highr_seconds_bucket[5m])))
 ```
 
 **Como interpretar:**
@@ -402,7 +406,7 @@ histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket[
 ```promql
 histogram_quantile(0.95,
   sum by (handler, le) (
-    rate(http_request_duration_seconds_bucket[5m])
+    rate(http_request_duration_highr_seconds_bucket[5m])
   )
 )
 ```

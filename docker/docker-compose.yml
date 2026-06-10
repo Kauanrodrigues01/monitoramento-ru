@@ -101,7 +101,7 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes
     volumes:
-      - redis_data2:/data
+      - redis_data:/data
     healthcheck:
       test:
         - CMD
@@ -127,6 +127,16 @@ services:
       retries: 5
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+
+  postgres-exporter:
+    container_name: monitor-ru-postgres-exporter
+    image: prometheuscommunity/postgres-exporter:v0.18.1
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-mydb}?sslmode=disable"
+    depends_on:
+      db:
+        condition: service_healthy
 
   node-exporter:
     image: prom/node-exporter:v1.11.1
@@ -174,7 +184,7 @@ services:
 
 volumes:
   postgres_data:
-  redis_data2:
+  redis_data:
   rabbitmq_data:
   prometheus_data:
   grafana_data:

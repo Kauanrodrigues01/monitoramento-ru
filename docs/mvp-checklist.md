@@ -164,6 +164,8 @@
 
 ### 2. Observabilidade — Grafana (dashboards pendentes)
 
+- [ ] Documentar 3 paineis novos em `HTTP Overview` na linha de `Lâtencia`: `P99`, `P95`, `P50`, documentar principalmente os Thresholds usados para colorir: verde(bom), amarelo (aceitável) e vermelho (problemático):
+- [ ] Verificar situação do painel `Lâtencia P95 por Endpoint`, pois acho que tem um erro, a mterica usada não retorna handler e possivelmente por isso não está funcionando como esperado
 - [ ] Dashboard `Business Metrics` — relatos por RU, distribuição de status, confiança média
 - [ ] Documentar dashboard `Business Metrics` e queries PromQL
 - [ ] Dashboard `WebSocket` — conexões ativas, eventos por segundo, desconexões

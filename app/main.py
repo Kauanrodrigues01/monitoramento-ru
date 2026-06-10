@@ -1,7 +1,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
@@ -91,6 +91,23 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PATCH"],
     allow_headers=["Content-Type", "X-Admin-Key", "X-Device-ID"],
 )
+
+
+@app.middleware("http")
+async def log_request_body(request: Request, call_next):
+    body = await request.body()
+
+    logger.info(
+        "method=%s path=%s body=%s",
+        request.method,
+        request.url.path,
+        body.decode("utf-8"),
+    )
+
+    response = await call_next(request)
+
+    return response
+
 
 # =====================================
 # Rate Limiter
